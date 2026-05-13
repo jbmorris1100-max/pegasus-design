@@ -1,0 +1,32 @@
+/** Placeholder module page — Pegasus Design */
+import { Shell } from "@/components/ui/shell";
+import { Card } from "@/components/ui/core";
+
+export default function ModulePage({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return function Page() {
+    return (
+      <Shell>
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+            <p className="text-sm text-muted mt-1">{description}</p>
+          </div>
+          <Card>
+            <div className="text-center py-16 text-muted">
+              <p className="text-lg font-medium mb-2">Module Under Construction</p>
+              <p className="text-sm">
+                This module is being built. Check the Command Center for active features.
+              </p>
+            </div>
+          </Card>
+        </div>
+      </Shell>
+    );
+  };
+}
