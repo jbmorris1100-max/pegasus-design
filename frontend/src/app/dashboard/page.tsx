@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useAppStore } from "@/stores";
+import { useAppStore, type DashboardSnapshot } from "@/stores";
 import { KpiCard, Card, StatusBadge, Button, LiveBadge } from "@/components/ui/core";
 import { api } from "@/lib/api";
 import { Brain, AlertTriangle, Wrench, Truck, Package, TrendingUp } from "lucide-react";
@@ -21,7 +21,7 @@ export default function CommandCenter() {
   useEffect(() => {
     async function fetchSnapshot() {
       setDashboardLoading(true);
-      try { const data = await api.get("/dashboard/snapshot"); setDashboard(data); }
+      try { const data = await api.get("/dashboard/snapshot"); setDashboard(data as DashboardSnapshot); }
       catch (e) { console.error(e); setDashboardLoading(false); }
     }
     fetchSnapshot();
