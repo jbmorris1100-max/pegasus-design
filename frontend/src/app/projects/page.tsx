@@ -40,7 +40,7 @@ export default function ProjectsPage() {
         <div className="flex items-center justify-between"><div><h1 className="page-title">Project Tracking</h1><p className="page-subtitle">Full lifecycle from lead to completion</p></div><Button variant="primary" size="sm" onClick={()=>setModalOpen(true)}>+ New Project</Button></div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3"><KpiCard label="Total" value={items.length}/><KpiCard label="Active" value={counts.active}/><KpiCard label="At Risk" value={counts.atRisk} status={counts.atRisk>2?"bad":counts.atRisk>0?"warn":"ok"}/><KpiCard label="Completed" value={items.filter(i=>i.status==="completed").length}/></div>
         {items.length===0 ? <Card><div className="text-center py-16 text-muted">No projects yet.</div></Card> : (
-          <div className="space-y-1">{items.map(p=>(
+          <div className="space-y-1">{items.map((p: any)=>(
             <div key={p.id as string} className="data-row cursor-pointer hover:bg-surface-elevated rounded px-3">
               <div className="flex-1 min-w-0"><div className="flex items-center gap-2"><span className="text-sm font-medium truncate">{p.name as string}</span><span className="text-[11px] text-muted capitalize">{(p.project_type as string||"").replace(/_/g," ")}</span></div>{p.target_completion&&<div className="text-[11px] text-muted mt-0.5 flex items-center gap-1"><Clock className="w-3 h-3"/>Due {p.target_completion as string}</div>}</div>
               <div className="flex items-center gap-3 ml-4"><span className="text-sm font-mono text-muted">${((p.estimated_total as number)||0).toLocaleString()}</span><StatusBadge status={p.status as string}/>{p.risk_level!=="low"&&<StatusBadge status={p.risk_level as string}/>}</div>
