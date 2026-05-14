@@ -78,9 +78,11 @@ export default function CrmPage() {
       </div>
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="New Customer">
-        <FormField label="Name" error={error && !form.name ? error : ""}>
+        <FormField label="Name">
           <FormInput value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Customer name" />
         </FormField>
+        {error && !form.name && <p className="text-red-400 text-xs mt-1">{error}</p>}
+
         <FormField label="Email">
           <FormInput value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="email@example.com" />
         </FormField>
@@ -105,7 +107,8 @@ export default function CrmPage() {
         <FormField label="Notes">
           <FormTextarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder="Optional notes" />
         </FormField>
-        {error && <p className="text-red-400 text-xs">{error}</p>}
+
+        {error && form.name && <p className="text-red-400 text-xs">{error}</p>}
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button>
           <Button variant="primary" onClick={handleSubmit} disabled={submitting}>
