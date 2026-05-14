@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:16-alpine
@@ -80,16 +78,18 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    dns:
+      - 127.0.0.11
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
-      NEXT_PUBLIC_WS_URL: ws://localhost:8000/ws
+      NEXT_PUBLIC_API_URL: /api/v1
+      NEXT_PUBLIC_WS_URL: /ws
     ports:
       - "3000:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
       - /app/.next
-    command: npm run dev
+    entrypoint: ["/bin/sh", "-c", "unset NEXT_PUBLIC_API_URL 2>/dev/null; export NEXT_PUBLIC_API_URL=/api/v1; exec npm run dev"]
 
 volumes:
   pgdata:

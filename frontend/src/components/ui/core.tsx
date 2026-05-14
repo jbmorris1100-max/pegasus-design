@@ -1,147 +1,67 @@
-/** Pegasus Design — Shared UI Components */
+/** Pegasus Design — Core UI Components (InlineIQ Design System) */
 import React from "react";
 import { cn } from "@/lib/utils";
 
-// ── Button ────────────────────────────────────────────────────
-
+// ── Button ──────────────────────────────────────────────────────
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "ghost" | "danger";
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md";
+}
+export function Button({ variant = "secondary", size = "md", className, children, ...props }: ButtonProps) {
+  const base = "inline-flex items-center justify-center gap-2 font-medium transition-all duration-150 focus:outline-none disabled:opacity-30 disabled:cursor-not-allowed";
+  const variants: Record<string, string> = {
+    primary: "bg-accent-bright text-[#001917] font-semibold rounded-full shadow-[0_0_0_1px_rgba(45,225,201,0.6),0_0_40px_rgba(45,225,201,0.35),0_10px_40px_rgba(45,225,201,0.18)] hover:translate-y-[-1px] hover:shadow-[0_0_0_1px_rgba(45,225,201,0.8),0_0_60px_rgba(45,225,201,0.5)]",
+    secondary: "bg-surface-high text-foreground border border-border rounded-full hover:border-border-strong hover:bg-ops-panel",
+    ghost: "text-muted hover:text-foreground hover:bg-surface-elevated rounded-full",
+    danger: "bg-danger-soft text-danger border border-danger/15 rounded-full hover:bg-danger/10",
+  };
+  const sizes: Record<string, string> = {
+    sm: "h-8 px-3 text-xs",
+    md: "h-10 px-5 text-sm",
+  };
+  return <button className={cn(base, variants[variant], sizes[size], className)} {...props}>{children}</button>;
 }
 
-export function Button({
-  variant = "secondary",
-  size = "md",
-  className,
-  children,
-  ...props
-}: ButtonProps) {
-  const base =
-    "inline-flex items-center justify-center gap-2 font-medium rounded-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:opacity-40 disabled:cursor-not-allowed";
-  const variants = {
-    primary:
-      "bg-accent text-[#1a0900] hover:bg-accent-strong active:scale-[0.98] font-semibold",
-    secondary:
-      "bg-surface-elevated text-foreground border border-border hover:border-muted hover:bg-surface-elevated/80",
-    ghost: "text-muted hover:text-foreground hover:bg-surface",
-    danger: "bg-danger/10 text-danger border border-danger/20 hover:bg-danger/20",
-  };
-  const sizes = {
-    sm: "h-8 px-3 text-xs",
-    md: "h-10 px-4 text-sm",
-    lg: "h-12 px-6 text-sm",
-  };
-
+// ── Card ────────────────────────────────────────────────────────
+interface CardProps { children: React.ReactNode; className?: string; elevated?: boolean; }
+export function Card({ children, className, elevated }: CardProps) {
   return (
-    <button
-      className={cn(base, variants[variant], sizes[size], className)}
-      {...props}
-    >
-      {children}
-    </button>
+    <div className={cn(
+      elevated ? "card-elevated" : "card",
+      "animate-in", className
+    )}>{children}</div>
   );
 }
 
-// ── Card ──────────────────────────────────────────────────────
-
-interface CardProps {
-  children: React.ReactNode;
-  className?: string;
-  elevated?: boolean;
-}
-
-export function Card({ children, className, elevated = false }: CardProps) {
+// ── KpiCard ─────────────────────────────────────────────────────
+interface KpiCardProps { label: string; value: string | number; sub?: string; status?: "ok" | "warn" | "bad"; className?: string; }
+export function KpiCard({ label, value, sub, status, className }: KpiCardProps) {
   return (
-    <div
-      className={cn(
-        elevated ? "data-card-elevated" : "data-card",
-        "animate-in",
-        className
-      )}
-    >
-      {children}
+    <div className={cn("kpi-card", status === "warn" ? "warn" : status === "bad" ? "bad" : "", className)}>
+      <div className="kpi-accent" />
+      <div className="kpi-label">{label}</div>
+      <div className="kpi-value">{value}{sub && <small>{sub}</small>}</div>
     </div>
   );
 }
 
-// ── StatusBadge ───────────────────────────────────────────────
-
-interface StatusBadgeProps {
-  status: "healthy" | "warning" | "critical" | "ok" | string;
-  label?: string;
-  className?: string;
-}
-
+// ── StatusBadge ─────────────────────────────────────────────────
+interface StatusBadgeProps { status: string; label?: string; className?: string; }
 export function StatusBadge({ status, label, className }: StatusBadgeProps) {
-  const map: Record<string, string> = {
-    healthy: "status-healthy",
-    ok: "status-healthy",
-    warning: "status-warning",
-    critical: "status-critical",
-    danger: "status-critical",
-    high: "status-critical",
-    medium: "status-warning",
-    low: "status-healthy",
-  };
-
-  return (
-    <span className={cn(map[status] || "status-pill", className)}>
-      <span className="w-1.5 h-1.5 rounded-full bg-current" />
-      {label || status}
-    </span>
-  );
+  const s = (status || "").toLowerCase();
+  const cls = s === "healthy" || s === "ok" || s === "run" || s === "completed" || s === "green" ? "badge-run"
+    : s === "warning" || s === "warn" || s === "medium" || s === "idle" || s === "amber" ? "badge-idle"
+    : s === "critical" || s === "danger" || s === "dmg" || s === "high" || s === "red" ? "badge-dmg"
+    : "badge-idle";
+  return <span className={cn(cls, className)}>{label || status}</span>;
 }
 
-// ── MetricCard ────────────────────────────────────────────────
-
-interface MetricCardProps {
-  label: string;
-  value: string | number;
-  subtext?: string;
-  trend?: "up" | "down" | "flat";
-  status?: "healthy" | "warning" | "critical";
-  icon?: React.ReactNode;
-  className?: string;
-}
-
-export function MetricCard({
-  label,
-  value,
-  subtext,
-  trend,
-  status,
-  icon,
-  className,
-}: MetricCardProps) {
-  return (
-    <Card className={cn("flex flex-col gap-2", className)}>
-      <div className="flex items-center justify-between">
-        <span className="metric-label">{label}</span>
-        {status && <StatusBadge status={status} />}
-        {icon && <span className="text-muted">{icon}</span>}
-      </div>
-      <div className="flex items-baseline gap-2">
-        <span className="metric-value">{value}</span>
-        {trend && (
-          <span
-            className={cn(
-              "text-xs font-medium",
-              trend === "up" && "text-success",
-              trend === "down" && "text-danger",
-              trend === "flat" && "text-muted"
-            )}
-          >
-            {trend === "up" ? "↑" : trend === "down" ? "↓" : "→"}
-          </span>
-        )}
-      </div>
-      {subtext && <span className="text-xs text-muted">{subtext}</span>}
-    </Card>
-  );
-}
-
-// ── Divider ───────────────────────────────────────────────────
-
+// ── Divider ─────────────────────────────────────────────────────
 export function Divider({ className }: { className?: string }) {
   return <hr className={cn("border-border my-2", className)} />;
+}
+
+// ── LiveBadge ───────────────────────────────────────────────────
+export function LiveBadge() {
+  return <span className="live-badge">Live</span>;
 }

@@ -31,7 +31,11 @@ class Settings(BaseSettings):
     ai_mode: str = "observe"  # observe | assist | automate
 
     # ── CORS ───────────────────────────────────────────────────────────
-    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8000"]
+    cors_origins: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "https://miniature-eureka-x5jxrpwqgj7w2pr4v-3000.app.github.dev",
+    ]
 
     class Config:
         env_file = ".env"
