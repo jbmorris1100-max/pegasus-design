@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+const API_BASE = "https://miniature-eureka-x5jxrpwqgj7w2pr4v-8000.app.github.dev/api/v1";
 
 export const api = {
   request: async (path: string, options?: RequestInit) => {
