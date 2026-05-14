@@ -79,33 +79,61 @@ export default function CrmPage() {
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="New Customer">
         <FormField label="Name">
-          <FormInput value={form.name} onChange={(e: any) => setForm({...form, name: e.target.value})} placeholder="Customer name" />
+          <FormInput
+            value={form.name}
+            onChange={(val) => setForm({...form, name: val})}
+            placeholder="Customer name"
+          />
         </FormField>
         {error && !form.name && <p className="text-red-400 text-xs mt-1">{error}</p>}
 
         <FormField label="Email">
-          <FormInput value={form.email} onChange={(e: any) => setForm({...form, email: e.target.value})} placeholder="email@example.com" />
+          <FormInput
+            value={form.email}
+            onChange={(val) => setForm({...form, email: val})}
+            placeholder="email@example.com"
+          />
         </FormField>
         <FormField label="Phone">
-          <FormInput value={form.phone} onChange={(e: any) => setForm({...form, phone: e.target.value})} placeholder="555-0100" />
+          <FormInput
+            value={form.phone}
+            onChange={(val) => setForm({...form, phone: val})}
+            placeholder="555-0100"
+          />
         </FormField>
         <FormField label="City">
-          <FormInput value={form.city} onChange={(e: any) => setForm({...form, city: e.target.value})} placeholder="City" />
+          <FormInput
+            value={form.city}
+            onChange={(val) => setForm({...form, city: val})}
+            placeholder="City"
+          />
         </FormField>
         <FormField label="State">
-          <FormInput value={form.state} onChange={(e: any) => setForm({...form, state: e.target.value})} placeholder="State" />
+          <FormInput
+            value={form.state}
+            onChange={(val) => setForm({...form, state: val})}
+            placeholder="State"
+          />
         </FormField>
         <FormField label="Type">
-          <FormSelect value={form.customer_type} onChange={(e: any) => setForm({...form, customer_type: e.target.value})}>
-            <option value="RESIDENTIAL">Residential</option>
-            <option value="COMMERCIAL">Commercial</option>
-            <option value="DESIGNER">Designer</option>
-            <option value="CONTRACTOR">Contractor</option>
-            <option value="ARCHITECT">Architect</option>
-          </FormSelect>
+          <FormSelect
+            value={form.customer_type}
+            onChange={(val) => setForm({...form, customer_type: val})}
+            options={[
+              { value: "RESIDENTIAL", label: "Residential" },
+              { value: "COMMERCIAL", label: "Commercial" },
+              { value: "DESIGNER", label: "Designer" },
+              { value: "CONTRACTOR", label: "Contractor" },
+              { value: "ARCHITECT", label: "Architect" },
+            ]}
+          />
         </FormField>
         <FormField label="Notes">
-          <FormTextarea value={form.notes} onChange={(e: any) => setForm({...form, notes: e.target.value})} placeholder="Optional notes" />
+          <FormTextarea
+            value={form.notes}
+            onChange={(val) => setForm({...form, notes: val})}
+            placeholder="Optional notes"
+          />
         </FormField>
 
         {error && form.name && <p className="text-red-400 text-xs">{error}</p>}
