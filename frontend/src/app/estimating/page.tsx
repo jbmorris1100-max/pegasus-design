@@ -38,7 +38,7 @@ export default function EstimatingPage() {
         <div className="flex items-center justify-between"><div><h1 className="page-title">Estimating Intelligence</h1><p className="page-subtitle">Quick-capture, AI-assisted pricing, margin analysis</p></div><Button variant="primary" size="sm" onClick={()=>setModalOpen(true)}>+ New Estimate</Button></div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3"><KpiCard label="Total" value={items.length}/><KpiCard label="Pipeline" value={"$"+Math.round(total/1000)+"k"}/><KpiCard label="Approved" value={approved}/><KpiCard label="Avg Margin" value="36%" status="warn"/></div>
         {items.length===0 ? <Card><div className="text-center py-16 text-muted">No estimates yet.</div></Card> : (
-          <div className="space-y-1">{items.map(e=>(
+          <div className="space-y-1">{items.map((e: any)=>(
             <div key={e.id as string} className="data-row cursor-pointer hover:bg-surface-elevated rounded px-3"><div className="flex-1 min-w-0"><div className="flex items-center gap-2"><span className="text-sm font-medium">{e.title as string}</span>{(e.revision_number as number)>1&&<span className="text-[10px] text-muted">Rev {e.revision_number as number}</span>}</div>{e.sent_at&&<div className="text-[11px] text-muted mt-0.5">Sent: {e.sent_at as string}</div>}</div><div className="flex items-center gap-3 ml-4"><span className="text-sm font-mono">${((e.total as number)||0).toLocaleString()}</span>{e.target_margin&&<span className="text-[10px] text-accent font-mono">{Math.round((e.target_margin as number)*100)}%</span>}<StatusBadge status={e.status as string}/></div></div>
           ))}</div>
         )}
