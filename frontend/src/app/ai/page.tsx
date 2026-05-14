@@ -16,7 +16,7 @@ export default function AiPage() {
           api.get("/ai/daily-brief"),
         ]);
         setRecs((r as any).items ?? []);
-        setBrief(b);
+        setBrief(b as any);
       } catch (e) {
         console.error(e);
       } finally {
