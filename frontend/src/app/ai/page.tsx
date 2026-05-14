@@ -37,7 +37,7 @@ export default function AiPage() {
     <div className="space-y-6 p-6">
       <h1 className="text-2xl font-bold">AI Advisor</h1>
       {brief && (
-        <Card highlight="teal">
+        <Card className="border-l-4 border-teal-400">
           <h2 className="text-lg font-semibold">Today's Brief</h2>
           <p className="text-sm text-muted mt-2">{(brief as any).summary}</p>
         </Card>
