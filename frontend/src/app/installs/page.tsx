@@ -20,7 +20,7 @@ export default function InstallsPage() {
   async function handleSubmit() {
     if (!form.project_id.trim()) { setError("Project ID is required."); return; }
     setSubmitting(true); setError("");
-    try { await fetch("/api/v1/installs/", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(form) }); setModalOpen(false); setForm({ project_id:"", scheduled_date:"", lead_installer:"", crew_members:"", notes:"", address:"" }); }
+    try { await api.post("/installs/", form); setModalOpen(false); setForm({ project_id:"", scheduled_date:"", lead_installer:"", crew_members:"", notes:"", address:"" }); }
     catch { setError("Failed to create install."); } finally { setSubmitting(false); }
   }
 

@@ -35,11 +35,15 @@ async def list_customers(
     )
     items = []
     for c in result.scalars():
+        ctype = c.type.value if hasattr(c.type, "value") else str(c.type)
         items.append({
-            "id": str(c.id), "name": c.name, "type": str(c.type) if c.type else "RESIDENTIAL",
-            "status": str(c.status) if c.status else "active", "email": c.email, "phone": c.phone,
+            "id": str(c.id), "name": c.name,
+            "type": ctype, "customer_type": ctype,
+            "status": c.status.value if hasattr(c.status, "value") else str(c.status),
+            "email": c.email, "phone": c.phone,
             "city": c.city, "state": c.state,
-            "total_projects": c.total_projects, "total_revenue": float(c.total_revenue) if c.total_revenue else 0,
+            "total_projects": c.total_projects,
+            "total_revenue": float(c.total_revenue) if c.total_revenue else 0,
         })
     return {"total": total, "page": page, "page_size": page_size, "items": items}
 
@@ -58,9 +62,16 @@ async def create_customer(
     ct = getattr(CustomerType, customer_type.upper(), CustomerType.RESIDENTIAL)
     c = Customer(name=name, type=ct, status=CustomerStatus.ACTIVE, email=email, phone=phone, city=city, state=state, notes=notes)
     db.add(c)
-    await db.commit()
-    await db.refresh(c)
-    return {"id": str(c.id), "name": c.name, "status": str(c.status.value) if hasattr(c.status, 'value') else str(c.status), "created": True}
+    try:
+        await db.commit()
+        await db.refresh(c)
+    except Exception as e:
+        await db.rollback()
+        print(f"[customers] create error: {e}")
+        raise
+    print(f"[customers] created {c.id} — {c.name}")
+    ctype = c.type.value if hasattr(c.type, "value") else str(c.type)
+    return {"id": str(c.id), "name": c.name, "customer_type": ctype, "status": c.status.value if hasattr(c.status, "value") else str(c.status), "created": True}
 
 
 @router.get("/{customer_id}")

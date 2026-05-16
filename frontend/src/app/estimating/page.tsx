@@ -22,7 +22,7 @@ export default function EstimatingPage() {
     if (!form.title.trim()) { setError("Title is required."); return; }
     setSubmitting(true); setError("");
     try {
-      await fetch("/api/v1/estimates/", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({...form, total:parseFloat(form.total)||0, estimated_labor_hours:parseFloat(form.estimated_labor_hours)||0, estimated_material_cost:parseFloat(form.estimated_material_cost)||0, target_margin:parseFloat(form.target_margin)||0.40}) });
+      await api.post("/estimates/", {...form, total:parseFloat(form.total)||0, estimated_labor_hours:parseFloat(form.estimated_labor_hours)||0, estimated_material_cost:parseFloat(form.estimated_material_cost)||0, target_margin:parseFloat(form.target_margin)||0.40});
       setModalOpen(false); setForm({ title:"", project_id:"", customer_id:"", total:"0", estimated_labor_hours:"0", estimated_material_cost:"0", target_margin:"0.40" });
       setLoading(true); await fetchData();
     } catch { setError("Failed to create estimate."); }

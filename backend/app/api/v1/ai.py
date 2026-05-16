@@ -1,5 +1,5 @@
 """Pegasus Design — AI API (Live Database Queries)"""
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
@@ -8,6 +8,10 @@ from app.core.database import get_db
 from app.models.events import AIRecommendation, DailyBrief
 
 router = APIRouter()
+
+# In-memory AI mode store (persists for the lifetime of the process).
+# A real implementation would store this in the database or Redis.
+_ai_mode: str = "observe"
 
 
 @router.get("/recommendations")
@@ -19,8 +23,10 @@ async def list_recommendations(
     db: AsyncSession = Depends(get_db),
 ):
     query = select(AIRecommendation)
-    if category: query = query.where(AIRecommendation.category == category)
-    if status: query = query.where(AIRecommendation.status == status)
+    if category:
+        query = query.where(AIRecommendation.category == category)
+    if status:
+        query = query.where(AIRecommendation.status == status)
 
     count_query = select(func.count()).select_from(query.subquery())
     total_result = await db.execute(count_query)
@@ -42,6 +48,35 @@ async def list_recommendations(
             "created_at": str(r.created_at) if r.created_at else "",
         })
     return {"total": total, "page": page, "page_size": page_size, "items": items}
+
+
+@router.post("/recommendations/{rec_id}/accept")
+async def accept_recommendation(rec_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(AIRecommendation).where(AIRecommendation.id == rec_id)
+    )
+    rec = result.scalar_one_or_none()
+    if not rec:
+        raise HTTPException(status_code=404, detail="Recommendation not found")
+    rec.status = "accepted"
+    await db.commit()
+    console_log = f"[ai] recommendation {rec_id} accepted"
+    print(console_log)
+    return {"id": rec_id, "status": "accepted"}
+
+
+@router.post("/recommendations/{rec_id}/dismiss")
+async def dismiss_recommendation(rec_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(AIRecommendation).where(AIRecommendation.id == rec_id)
+    )
+    rec = result.scalar_one_or_none()
+    if not rec:
+        raise HTTPException(status_code=404, detail="Recommendation not found")
+    rec.status = "dismissed"
+    await db.commit()
+    print(f"[ai] recommendation {rec_id} dismissed")
+    return {"id": rec_id, "status": "dismissed"}
 
 
 @router.get("/daily-brief")
@@ -89,11 +124,15 @@ async def get_growth_signals(db: AsyncSession = Depends(get_db)):
 
 @router.get("/mode")
 async def get_ai_mode():
-    return {"mode": "assist"}
+    return {"mode": _ai_mode}
 
 
 @router.put("/mode")
-async def set_ai_mode(mode: str = "observe"):
+async def set_ai_mode(body: dict):
+    global _ai_mode
+    mode = body.get("mode", "observe")
     if mode not in ("observe", "assist", "automate"):
-        return {"error": "Invalid mode"}, 400
-    return {"mode": mode}
+        raise HTTPException(status_code=400, detail=f"Invalid mode: {mode}. Must be observe, assist, or automate.")
+    _ai_mode = mode
+    print(f"[ai] mode set to {mode}")
+    return {"mode": _ai_mode}

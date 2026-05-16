@@ -103,6 +103,7 @@ async def seed_all():
                     status='completed' if st=='COMPLETED' else ('in_progress' if st=='INSTALLING' else 'scheduled'),
                     scheduled_date=p.install_date or rfd(1,30),
                     lead_installer=random.choice(users).email,
+                    crew=[],
                     estimated_hours=p.estimated_labor_hours*0.3,
                     address=p.address))
         await s.flush()

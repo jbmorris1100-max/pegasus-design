@@ -24,7 +24,7 @@ export default function ProjectsPage() {
     if (!form.name.trim()) { setError("Project name is required."); return; }
     setSubmitting(true); setError("");
     try {
-      await fetch("/api/v1/projects/", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({...form, estimated_total:parseFloat(form.estimated_total)||0, estimated_labor_hours:parseFloat(form.estimated_labor_hours)||0}) });
+      await api.post("/projects/", {...form, estimated_total:parseFloat(form.estimated_total)||0, estimated_labor_hours:parseFloat(form.estimated_labor_hours)||0});
       setModalOpen(false); setForm({ name:"", description:"", customer_id:"", project_type:"OTHER", target_completion:"", estimated_total:"0", estimated_labor_hours:"0" });
       setLoading(true); await fetchData();
     } catch { setError("Failed to create project."); }

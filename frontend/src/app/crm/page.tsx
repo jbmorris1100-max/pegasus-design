@@ -32,7 +32,7 @@ export default function CrmPage() {
     if (!form.name.trim()) { setError("Name is required."); return; }
     setSubmitting(true); setError("");
     try {
-      await fetch("/api/v1/customers/", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(form) });
+      await api.post("/customers/", form);
       setModalOpen(false);
       setForm({ name:"", email:"", phone:"", city:"", state:"", customer_type:"RESIDENTIAL", notes:"" });
       await fetchData();

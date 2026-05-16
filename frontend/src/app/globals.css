@@ -121,6 +121,15 @@
 
   .animate-in { animation: slideUp 0.3s ease-out, fadeIn 0.2s ease-out; }
 
+  @keyframes slideUp {
+    from { transform: translateY(8px); opacity: 0; }
+    to   { transform: translateY(0);   opacity: 1; }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
   /* Alert */
   .alert { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px; border-radius: 10px; font-size: 13px; }
   .alert-warn { @apply alert; background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.18); color: #FBBF24; }

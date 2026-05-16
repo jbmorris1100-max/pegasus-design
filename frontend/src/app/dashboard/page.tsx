@@ -31,15 +31,15 @@ export default function CommandCenter() {
 
   async function handleAcceptRecommendation(id: string) {
     try {
-      await fetch("/api/v1/ai/recommendations/" + id + "/accept", { method: "POST" });
+      await api.post(`/ai/recommendations/${id}/accept`);
       acceptRecommendation(id);
-    } catch {}
+    } catch (e) { console.error("accept rec:", e); }
   }
   async function handleDismissRecommendation(id: string) {
     try {
-      await fetch("/api/v1/ai/recommendations/" + id + "/dismiss", { method: "POST" });
+      await api.post(`/ai/recommendations/${id}/dismiss`);
       dismissRecommendation(id);
-    } catch {}
+    } catch (e) { console.error("dismiss rec:", e); }
   }
 
   return (

@@ -24,7 +24,7 @@ export default function TimelinePage() {
   async function handleSubmit() {
     if (form.event_type === "Other" && !form.description.trim()) { setError("Description required for custom events."); return; }
     setSubmitting(true); setError("");
-    try { await fetch("/api/v1/events/", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({...form, actor:"user"}) }); setModalOpen(false); setForm({ event_type:"Other", severity:"info", entity_type:"", description:"" }); setLoading(true); await fetchData(); }
+    try { await api.post("/events/", {...form, actor:"user"}); setModalOpen(false); setForm({ event_type:"Other", severity:"info", entity_type:"", description:"" }); setLoading(true); await fetchData(); }
     catch { setError("Failed to log event."); } finally { setSubmitting(false); }
   }
 

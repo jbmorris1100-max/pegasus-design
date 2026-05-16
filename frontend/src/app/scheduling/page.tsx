@@ -27,7 +27,7 @@ export default function SchedulingPage() {
   async function handleSubmit() {
     if (!form.title.trim()) { setError("Title is required."); return; }
     setSubmitting(true); setError("");
-    try { await fetch("/api/v1/schedule-blocks/", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({...form, estimated_hours:parseFloat(form.estimated_hours)||0}) }); setModalOpen(false); setForm({ title:"", block_type:"PRODUCTION", start_date:"", end_date:"", department:"", assigned_to:"", estimated_hours:"0", notes:"" }); }
+    try { await api.post("/schedule-blocks/", {...form, estimated_hours:parseFloat(form.estimated_hours)||0}); setModalOpen(false); setForm({ title:"", block_type:"PRODUCTION", start_date:"", end_date:"", department:"", assigned_to:"", estimated_hours:"0", notes:"" }); }
     catch { setError("Failed to create block."); } finally { setSubmitting(false); }
   }
 

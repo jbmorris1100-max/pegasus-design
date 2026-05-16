@@ -1,8 +1,7 @@
 """Pegasus Design — Install Management & QC Models"""
 from sqlalchemy import Column, String, Text, Float, ForeignKey, Integer, Date, ARRAY
 from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from typing import List
+from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
 
@@ -18,7 +17,6 @@ class Install(BaseModel):
 
     lead_installer = Column(String(255), nullable=True)
     crew = Column(ARRAY(String), default=list)
-    crew_members: Mapped[List[str]] = mapped_column(ARRAY(String), default=list)
     address = Column(Text, nullable=True)
     site_contact = Column(String(255), nullable=True)
     site_phone = Column(String(50), nullable=True)

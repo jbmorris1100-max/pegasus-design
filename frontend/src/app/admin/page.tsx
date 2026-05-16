@@ -17,7 +17,7 @@ export default function AdminPage() {
   async function handleSetMode(mode: string) {
     setModeLoading(true);
     try {
-      await fetch("/api/v1/ai/mode", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }) });
+      await api.put("/ai/mode", { mode });
       setAiMode(mode as "observe"|"assist"|"automate");
     } catch {} finally { setModeLoading(false); }
   }

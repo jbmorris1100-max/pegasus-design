@@ -1,5 +1,5 @@
 """Pegasus Design — Projects API (Live Database Queries)"""
-from fastapi import APIRouter, Depends, Query, Body
+from fastapi import APIRouter, Depends, Query, Body, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
@@ -47,13 +47,26 @@ async def create_project(
         try: project_kwargs["customer_id"] = UUID(customer_id)
         except ValueError: pass
     if "customer_id" not in project_kwargs:
-        # Default to first customer
         from app.models.crm import Customer
         r = await db.execute(select(Customer).limit(1))
         c = r.scalar_one_or_none()
-        if c: project_kwargs["customer_id"] = c.id
+        if c:
+            project_kwargs["customer_id"] = c.id
+        else:
+            raise HTTPException(
+                status_code=422,
+                detail="No customers exist. Create a customer first before creating a project."
+            )
     p = Project(**project_kwargs)
-    db.add(p); await db.commit(); await db.refresh(p)
+    db.add(p)
+    try:
+        await db.commit()
+        await db.refresh(p)
+    except Exception as e:
+        await db.rollback()
+        print(f"[projects] create error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    print(f"[projects] created {p.id} — {p.name}")
     return {"id":str(p.id),"name":p.name,"created":True}
 
 
