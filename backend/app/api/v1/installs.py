@@ -1,15 +1,25 @@
 """Pegasus Design — Installs API"""
-from fastapi import APIRouter, Depends, Query, Body
+from fastapi import APIRouter, Depends, Query, Body, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 from app.core.database import get_db
 from app.models.installs import Install
 
 router = APIRouter()
+
+
+def _parse_date(s):
+    if s is None:
+        return None
+    if isinstance(s, date):
+        return s
+    if isinstance(s, str) and s.strip():
+        return datetime.strptime(s.strip(), "%Y-%m-%d").date()
+    return None
 
 
 @router.get("/")
@@ -60,7 +70,7 @@ async def create_install(
     crew = [m.strip() for m in crew_members.split(",") if m.strip()] if crew_members else []
     inst = Install(
         project_id=project_id,
-        scheduled_date=date.today() if not scheduled_date else scheduled_date,
+        scheduled_date=_parse_date(scheduled_date) or date.today(),
         lead_installer=lead_installer,
         notes=notes,
         address=address,
