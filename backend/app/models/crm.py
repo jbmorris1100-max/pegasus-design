@@ -26,8 +26,8 @@ class Customer(BaseModel):
     __tablename__ = "customers"
 
     name = Column(String(255), nullable=False)
-    type = Column(Enum(CustomerType), default=CustomerType.RESIDENTIAL, nullable=False)
-    status = Column(Enum(CustomerStatus), default=CustomerStatus.LEAD, nullable=False)
+    type = Column(Enum(CustomerType, values_callable=lambda x: [e.value for e in x]), default=CustomerType.RESIDENTIAL, nullable=False)
+    status = Column(Enum(CustomerStatus, values_callable=lambda x: [e.value for e in x]), default=CustomerStatus.LEAD, nullable=False)
     email = Column(String(255), nullable=True)
     phone = Column(String(50), nullable=True)
     address_line1 = Column(String(255), nullable=True)

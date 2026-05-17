@@ -22,7 +22,7 @@ class Estimate(BaseModel):
     customer_id = Column(UUID(as_uuid=True), ForeignKey("customers.id"), nullable=False)
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True)
     title = Column(String(255), nullable=False)
-    status = Column(Enum(EstimateStatus), default=EstimateStatus.DRAFT, nullable=False)
+    status = Column(Enum(EstimateStatus, values_callable=lambda x: [e.value for e in x]), default=EstimateStatus.DRAFT, nullable=False)
     revision_number = Column(Integer, default=1)
 
     # Financial

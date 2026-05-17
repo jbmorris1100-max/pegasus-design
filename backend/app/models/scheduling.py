@@ -22,7 +22,7 @@ class ScheduleBlock(BaseModel):
 
     project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True)
     title = Column(String(255), nullable=False)
-    block_type = Column(Enum(ScheduleBlockType), default=ScheduleBlockType.PRODUCTION, nullable=False)
+    block_type = Column(Enum(ScheduleBlockType, values_callable=lambda x: [e.value for e in x]), default=ScheduleBlockType.PRODUCTION, nullable=False)
     assigned_to = Column(String(255), nullable=True)
     department = Column(String(100), nullable=True)
 

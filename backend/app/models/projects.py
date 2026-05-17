@@ -40,8 +40,8 @@ class Project(BaseModel):
     customer_id = Column(UUID(as_uuid=True), ForeignKey("customers.id"), nullable=False)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
-    project_type = Column(Enum(ProjectType), default=ProjectType.OTHER, nullable=False)
-    status = Column(Enum(ProjectStatus), default=ProjectStatus.LEAD, nullable=False)
+    project_type = Column(Enum(ProjectType, values_callable=lambda x: [e.value for e in x]), default=ProjectType.OTHER, nullable=False)
+    status = Column(Enum(ProjectStatus, values_callable=lambda x: [e.value for e in x]), default=ProjectStatus.LEAD, nullable=False)
 
     # Dates
     target_start = Column(Date, nullable=True)
