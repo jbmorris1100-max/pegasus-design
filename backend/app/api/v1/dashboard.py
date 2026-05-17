@@ -13,6 +13,11 @@ from app.models.scheduling import InventoryItem
 router = APIRouter()
 
 
+def _ev(val):
+    """Return enum .value or the value itself."""
+    return val.value if hasattr(val, "value") else val
+
+
 @router.get("/snapshot")
 async def get_dashboard_snapshot(db: AsyncSession = Depends(get_db)):
     """Live aggregated operational snapshot from the database."""
@@ -94,8 +99,8 @@ async def get_dashboard_snapshot(db: AsyncSession = Depends(get_db)):
             "id": str(p.id),
             "customer_id": str(p.customer_id) if p.customer_id else "",
             "name": p.name,
-            "project_type": p.project_type,
-            "status": p.status,
+            "project_type": _ev(p.project_type),
+            "status": _ev(p.status),
             "risk_level": p.risk_level,
             "target_completion": str(p.target_completion) if p.target_completion else None,
             "install_date": str(p.install_date) if p.install_date else None,

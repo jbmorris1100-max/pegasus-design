@@ -7,7 +7,15 @@ import { Modal, FormField, FormInput, FormSelect, FormTextarea } from "@/compone
 import { api } from "@/lib/api";
 import { Calendar, Clock, Truck } from "lucide-react";
 
-const BLOCK_TYPES = ["PRODUCTION","ASSEMBLY","FINISHING","INSTALL","MAINTENANCE","TRAINING","TIME_OFF"];
+const BLOCK_TYPES = [
+  { value: "production",  label: "Production" },
+  { value: "assembly",    label: "Assembly" },
+  { value: "finishing",   label: "Finishing" },
+  { value: "install",     label: "Install" },
+  { value: "maintenance", label: "Maintenance" },
+  { value: "training",    label: "Training" },
+  { value: "time_off",    label: "Time Off" },
+];
 
 export default function SchedulingPage() {
   const [data, setData] = useState<Record<string,unknown>|null>(null);
@@ -15,7 +23,7 @@ export default function SchedulingPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [form, setForm] = useState({ title:"", block_type:"PRODUCTION", start_date:"", end_date:"", department:"", assigned_to:"", estimated_hours:"0", notes:"" });
+  const [form, setForm] = useState({ title:"", block_type:"production", start_date:"", end_date:"", department:"", assigned_to:"", estimated_hours:"0", notes:"" });
   const [weekDays, setWeekDays] = useState<Date[]>([]);
 
   useEffect(() => { (async () => { try { setData(await api.get("/dashboard/snapshot")); } catch {} finally { setLoading(false); } })(); }, []);
@@ -27,7 +35,7 @@ export default function SchedulingPage() {
   async function handleSubmit() {
     if (!form.title.trim()) { setError("Title is required."); return; }
     setSubmitting(true); setError("");
-    try { await api.post("/schedule-blocks/", {...form, estimated_hours:parseFloat(form.estimated_hours)||0}); setModalOpen(false); setForm({ title:"", block_type:"PRODUCTION", start_date:"", end_date:"", department:"", assigned_to:"", estimated_hours:"0", notes:"" }); }
+    try { await api.post("/schedule-blocks/", {...form, estimated_hours:parseFloat(form.estimated_hours)||0}); setModalOpen(false); setForm({ title:"", block_type:"production", start_date:"", end_date:"", department:"", assigned_to:"", estimated_hours:"0", notes:"" }); }
     catch { setError("Failed to create block."); } finally { setSubmitting(false); }
   }
 
@@ -44,7 +52,7 @@ export default function SchedulingPage() {
       <Modal open={modalOpen} onClose={()=>setModalOpen(false)} title="Add Schedule Block">
         {error && <div className="alert-bad mb-4 text-sm">{error}</div>}
         <FormField label="Title" required><FormInput value={form.title} onChange={(v)=>setForm({...form,title:v})} placeholder="e.g., Production Block 16"/></FormField>
-        <FormField label="Block Type"><FormSelect value={form.block_type} onChange={(v)=>setForm({...form,block_type:v})} options={BLOCK_TYPES.map(t=>({value:t,label:t.replace(/_/g," ")}))}/></FormField>
+        <FormField label="Block Type"><FormSelect value={form.block_type} onChange={(v)=>setForm({...form,block_type:v})} options={BLOCK_TYPES}/></FormField>
         <div className="grid grid-cols-2 gap-3"><FormField label="Start Date"><FormInput value={form.start_date} onChange={(v)=>setForm({...form,start_date:v})} type="date"/></FormField><FormField label="End Date"><FormInput value={form.end_date} onChange={(v)=>setForm({...form,end_date:v})} type="date"/></FormField></div>
         <div className="grid grid-cols-2 gap-3"><FormField label="Department"><FormInput value={form.department} onChange={(v)=>setForm({...form,department:v})} placeholder="e.g., Production"/></FormField><FormField label="Assigned To"><FormInput value={form.assigned_to} onChange={(v)=>setForm({...form,assigned_to:v})} placeholder="Email or name"/></FormField></div>
         <FormField label="Estimated Hours"><FormInput value={form.estimated_hours} onChange={(v)=>setForm({...form,estimated_hours:v})} type="number"/></FormField>
