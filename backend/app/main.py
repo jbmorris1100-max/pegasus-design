@@ -1,22 +1,42 @@
-"""Pegasus Design — FastAPI Application Entry Point"""
+import asyncio
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
-from app.api.v1.router import api_router
-from app.api.ws.handler import websocket_endpoint
 
 settings = get_settings()
+
+# ── CORS origins ────────────────────────────────────────────
+_static_origins = [
+    "https://pegasus-design.vercel.app",
+    "https://pegasus-design-git-main-jbmorris1100-7601s-projects.vercel.app",
+    "https://pegasus-design-7h5kx9zef-jbmorris1100-7601s-projects.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+]
+_extra_origins = [o.strip() for o in os.getenv("EXTRA_ALLOWED_ORIGINS", "").split(",") if o.strip()]
+_all_origins = _extra_origins + _static_origins
+
+
+def _run_migrations() -> None:
+    """Run alembic migrations synchronously (called from a worker thread)."""
+    from alembic.config import Config
+    from alembic import command
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown lifecycle."""
-    # Startup
-    # In production, initialize DB connection pool, start background tasks, etc.
+    try:
+        await asyncio.to_thread(_run_migrations)
+        print("Database migrations applied.")
+    except Exception as e:
+        print(f"Migration error (non-fatal): {e}")
     yield
-    # Shutdown
-    # Gracefully close connections
 
 
 app = FastAPI(
@@ -29,13 +49,16 @@ app = FastAPI(
 # ── CORS ────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=_all_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # ── Routes ──────────────────────────────────────────────────
+from app.api.v1.router import api_router
+from app.api.ws.handler import websocket_endpoint
+
 app.include_router(api_router, prefix="/api/v1")
 
 # ── WebSocket ───────────────────────────────────────────────

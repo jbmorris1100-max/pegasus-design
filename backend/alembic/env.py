@@ -1,7 +1,9 @@
 """Alembic environment configuration for async migrations."""
 import asyncio
+import os
 from logging.config import fileConfig
 
+from dotenv import load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
@@ -12,9 +14,21 @@ from alembic import context
 from app.core.database import Base
 from app.models import *  # noqa: F401, F403
 
+load_dotenv()
+
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+# Override database URL from environment (Railway sets DATABASE_URL)
+_database_url = os.getenv("DATABASE_URL")
+if _database_url:
+    # Railway uses postgres:// — asyncpg requires postgresql+asyncpg://
+    if _database_url.startswith("postgres://"):
+        _database_url = _database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif _database_url.startswith("postgresql://") and "+asyncpg" not in _database_url:
+        _database_url = _database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    config.set_main_option("sqlalchemy.url", _database_url)
 
 target_metadata = Base.metadata
 
