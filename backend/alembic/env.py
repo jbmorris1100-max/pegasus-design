@@ -6,7 +6,7 @@ from logging.config import fileConfig
 from dotenv import load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 
@@ -20,24 +20,26 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Override database URL from environment (Railway sets DATABASE_URL)
-_database_url = os.getenv("DATABASE_URL")
-if _database_url:
-    # Railway uses postgres:// — asyncpg requires postgresql+asyncpg://
-    if _database_url.startswith("postgres://"):
-        _database_url = _database_url.replace("postgres://", "postgresql+asyncpg://", 1)
-    elif _database_url.startswith("postgresql://") and "+asyncpg" not in _database_url:
-        _database_url = _database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    config.set_main_option("sqlalchemy.url", _database_url)
+# Always read DATABASE_URL from the environment — never fall back to alembic.ini localhost.
+database_url = os.environ.get("DATABASE_URL", "")
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif database_url.startswith("postgresql://") and "+asyncpg" not in database_url:
+    database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+if not database_url:
+    raise RuntimeError("DATABASE_URL environment variable is not set")
+
+# Keep alembic config in sync for offline mode and other tooling.
+config.set_main_option("sqlalchemy.url", database_url)
 
 target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
-    url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url,
+        url=database_url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -53,14 +55,12 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
-    async with connectable.connect() as connection:
+    # Use create_async_engine directly so database_url is always the source of truth —
+    # never the potentially-stale value inside the alembic.ini config section.
+    engine = create_async_engine(database_url, poolclass=pool.NullPool)
+    async with engine.connect() as connection:
         await connection.run_sync(do_run_migrations)
-    await connectable.dispose()
+    await engine.dispose()
 
 
 def run_migrations_online() -> None:
