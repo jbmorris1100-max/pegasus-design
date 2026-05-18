@@ -77,6 +77,7 @@ async def portal_dashboard(customer_id: str, db: AsyncSession = Depends(get_db))
             "project_type":      ev(p.project_type),
             "target_completion": str(p.target_completion) if p.target_completion else None,
             "description":       p.description,
+            "estimated_total":   p.estimated_total or 0,
         })
 
     file_rows = await db.execute(
@@ -91,6 +92,7 @@ async def portal_dashboard(customer_id: str, db: AsyncSession = Depends(get_db))
             "display_name": f.display_name or f.filename,
             "file_url":     f.file_url,
             "file_type":    f.file_type,
+            "file_size":    f.file_size,
             "category":     f.category,
             "created_at":   f.created_at.isoformat() if f.created_at else None,
         }
@@ -106,6 +108,24 @@ async def portal_dashboard(customer_id: str, db: AsyncSession = Depends(get_db))
 
 # ── Messages ──────────────────────────────────────────────────────────────────
 
+@router.get("/messages/unread-counts")
+async def unread_counts(db: AsyncSession = Depends(get_db)):
+    """Returns {customer_id: count} for customers with unread client messages.
+    MUST be defined before /messages/{customer_id} so FastAPI matches the
+    static path first — otherwise 'unread-counts' is treated as a UUID
+    customer_id and causes a PostgreSQL error."""
+    result = await db.execute(
+        select(Message.customer_id, func.count(Message.id).label("cnt")).where(
+            and_(
+                Message.sender == "client",
+                Message.read_at.is_(None),
+                Message.deleted_at.is_(None),
+            )
+        ).group_by(Message.customer_id)
+    )
+    return {str(row.customer_id): row.cnt for row in result}
+
+
 @router.get("/messages/{customer_id}")
 async def get_messages(customer_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -113,19 +133,18 @@ async def get_messages(customer_id: str, db: AsyncSession = Depends(get_db)):
             and_(Message.customer_id == customer_id, Message.deleted_at.is_(None))
         ).order_by(Message.created_at.asc())
     )
-    return {
-        "items": [
-            {
-                "id":          str(m.id),
-                "customer_id": str(m.customer_id),
-                "sender":      m.sender,
-                "message":     m.message,
-                "read_at":     m.read_at.isoformat() if m.read_at else None,
-                "created_at":  m.created_at.isoformat() if m.created_at else None,
-            }
-            for m in result.scalars()
-        ]
-    }
+    msgs = [
+        {
+            "id":          str(m.id),
+            "customer_id": str(m.customer_id),
+            "sender":      m.sender,
+            "message":     m.message,
+            "read_at":     m.read_at.isoformat() if m.read_at else None,
+            "created_at":  m.created_at.isoformat() if m.created_at else None,
+        }
+        for m in result.scalars()
+    ]
+    return {"messages": msgs, "items": msgs}
 
 
 @router.post("/messages/{customer_id}")
@@ -152,18 +171,3 @@ async def send_message(
         "message":     msg.message,
         "created_at":  msg.created_at.isoformat() if msg.created_at else None,
     }
-
-
-@router.get("/messages/unread-counts")
-async def unread_counts(db: AsyncSession = Depends(get_db)):
-    """Returns {customer_id: count} for customers with unread client messages."""
-    result = await db.execute(
-        select(Message.customer_id, func.count(Message.id).label("cnt")).where(
-            and_(
-                Message.sender == "client",
-                Message.read_at.is_(None),
-                Message.deleted_at.is_(None),
-            )
-        ).group_by(Message.customer_id)
-    )
-    return {str(row.customer_id): row.cnt for row in result}
