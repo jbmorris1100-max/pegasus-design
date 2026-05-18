@@ -6,7 +6,10 @@ import { KpiCard, Card, StatusBadge, Button } from "@/components/ui/core";
 import { Modal, SlidePanel, FormField, FormInput, FormSelect, FormTextarea } from "@/components/ui/modal";
 import { Toaster, toast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
+import { FileManager } from "@/components/FileManager";
 import { Clock } from "lucide-react";
+
+type PanelTab = "details" | "files";
 
 const PROJECT_TYPES = [
   { value: "other",           label: "Other" },
@@ -61,6 +64,7 @@ export default function ProjectsPage() {
   const [editForm, setEditForm]             = useState<any>({});
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [deleting, setDeleting]             = useState(false);
+  const [activeTab, setActiveTab]           = useState<PanelTab>("details");
 
   async function fetchData() {
     try {
@@ -97,6 +101,7 @@ export default function ProjectsPage() {
 
   async function openPanel(id: string) {
     setPanelOpen(true);
+    setActiveTab("details");
     setSelected(null);
     try {
       const d = await api.get(`/projects/${id}`);
@@ -253,66 +258,98 @@ export default function ProjectsPage() {
           <p className="text-muted text-sm py-4 text-center">Loading…</p>
         ) : (
           <>
-            {/* Quick status row */}
-            <div className="flex items-center gap-2 mb-6 pb-4 border-b border-[rgba(94,234,212,0.08)]">
-              <StatusBadge status={selected.status} />
-              {selected.risk_level !== "low" && <StatusBadge status={selected.risk_level} />}
-              <span className="text-[11px] text-muted ml-auto">${(selected.estimated_total || 0).toLocaleString()} est.</span>
+            {/* Tab bar */}
+            <div className="flex gap-1 mb-5 border-b border-[rgba(94,234,212,0.08)]">
+              {(["details", "files"] as PanelTab[]).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-3 pb-2 text-xs font-semibold capitalize transition-colors border-b-2 -mb-px ${
+                    activeTab === tab
+                      ? "border-accent text-accent"
+                      : "border-transparent text-muted hover:text-foreground"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
 
-            <FormField label="Project Name" required>
-              <FormInput value={editForm.name} onChange={(v) => setEditForm({ ...editForm, name: v })} />
-            </FormField>
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Type">
-                <FormSelect value={editForm.project_type} onChange={(v) => setEditForm({ ...editForm, project_type: v })} options={PROJECT_TYPES} />
-              </FormField>
-              <FormField label="Status">
-                <FormSelect value={editForm.status} onChange={(v) => setEditForm({ ...editForm, status: v })} options={PROJECT_STATUSES} />
-              </FormField>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Risk Level">
-                <FormSelect value={editForm.risk_level} onChange={(v) => setEditForm({ ...editForm, risk_level: v })} options={RISK_LEVELS} />
-              </FormField>
-              <FormField label="Target Completion">
-                <FormInput value={editForm.target_completion ?? ""} onChange={(v) => setEditForm({ ...editForm, target_completion: v })} type="date" />
-              </FormField>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Target Start">
-                <FormInput value={editForm.target_start ?? ""} onChange={(v) => setEditForm({ ...editForm, target_start: v })} type="date" />
-              </FormField>
-              <FormField label="Install Date">
-                <FormInput value={editForm.install_date ?? ""} onChange={(v) => setEditForm({ ...editForm, install_date: v })} type="date" />
-              </FormField>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Est. Total ($)">
-                <FormInput value={editForm.estimated_total} onChange={(v) => setEditForm({ ...editForm, estimated_total: v })} type="number" />
-              </FormField>
-              <FormField label="Est. Labor Hours">
-                <FormInput value={editForm.estimated_labor_hours} onChange={(v) => setEditForm({ ...editForm, estimated_labor_hours: v })} type="number" />
-              </FormField>
-            </div>
-            <FormField label="Address">
-              <FormInput value={editForm.address} onChange={(v) => setEditForm({ ...editForm, address: v })} />
-            </FormField>
-            <FormField label="Notes">
-              <FormTextarea value={editForm.notes} onChange={(v) => setEditForm({ ...editForm, notes: v })} />
-            </FormField>
+            {activeTab === "details" && (
+              <>
+                {/* Quick status row */}
+                <div className="flex items-center gap-2 mb-6 pb-4 border-b border-[rgba(94,234,212,0.08)]">
+                  <StatusBadge status={selected.status} />
+                  {selected.risk_level !== "low" && <StatusBadge status={selected.risk_level} />}
+                  <span className="text-[11px] text-muted ml-auto">${(selected.estimated_total || 0).toLocaleString()} est.</span>
+                </div>
 
-            <div className="flex items-center justify-between mt-6 pt-4 border-t border-[rgba(94,234,212,0.08)]">
-              <Button variant="danger" size="sm" onClick={handleDelete} disabled={deleting}>
-                {deleting ? "Deleting…" : "Delete"}
-              </Button>
-              <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => setPanelOpen(false)}>Cancel</Button>
-                <Button variant="primary" onClick={handleSave} disabled={editSubmitting}>
-                  {editSubmitting ? "Saving…" : "Save Changes"}
-                </Button>
-              </div>
-            </div>
+                <FormField label="Project Name" required>
+                  <FormInput value={editForm.name} onChange={(v) => setEditForm({ ...editForm, name: v })} />
+                </FormField>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField label="Type">
+                    <FormSelect value={editForm.project_type} onChange={(v) => setEditForm({ ...editForm, project_type: v })} options={PROJECT_TYPES} />
+                  </FormField>
+                  <FormField label="Status">
+                    <FormSelect value={editForm.status} onChange={(v) => setEditForm({ ...editForm, status: v })} options={PROJECT_STATUSES} />
+                  </FormField>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField label="Risk Level">
+                    <FormSelect value={editForm.risk_level} onChange={(v) => setEditForm({ ...editForm, risk_level: v })} options={RISK_LEVELS} />
+                  </FormField>
+                  <FormField label="Target Completion">
+                    <FormInput value={editForm.target_completion ?? ""} onChange={(v) => setEditForm({ ...editForm, target_completion: v })} type="date" />
+                  </FormField>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField label="Target Start">
+                    <FormInput value={editForm.target_start ?? ""} onChange={(v) => setEditForm({ ...editForm, target_start: v })} type="date" />
+                  </FormField>
+                  <FormField label="Install Date">
+                    <FormInput value={editForm.install_date ?? ""} onChange={(v) => setEditForm({ ...editForm, install_date: v })} type="date" />
+                  </FormField>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField label="Est. Total ($)">
+                    <FormInput value={editForm.estimated_total} onChange={(v) => setEditForm({ ...editForm, estimated_total: v })} type="number" />
+                  </FormField>
+                  <FormField label="Est. Labor Hours">
+                    <FormInput value={editForm.estimated_labor_hours} onChange={(v) => setEditForm({ ...editForm, estimated_labor_hours: v })} type="number" />
+                  </FormField>
+                </div>
+                <FormField label="Address">
+                  <FormInput value={editForm.address} onChange={(v) => setEditForm({ ...editForm, address: v })} />
+                </FormField>
+                <FormField label="Notes">
+                  <FormTextarea value={editForm.notes} onChange={(v) => setEditForm({ ...editForm, notes: v })} />
+                </FormField>
+
+                <div className="flex items-center justify-between mt-6 pt-4 border-t border-[rgba(94,234,212,0.08)]">
+                  <Button variant="danger" size="sm" onClick={handleDelete} disabled={deleting}>
+                    {deleting ? "Deleting…" : "Delete"}
+                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" onClick={() => setPanelOpen(false)}>Cancel</Button>
+                    <Button variant="primary" onClick={handleSave} disabled={editSubmitting}>
+                      {editSubmitting ? "Saving…" : "Save Changes"}
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {activeTab === "files" && selected.customer_id && (
+              <FileManager
+                customerId={selected.customer_id}
+                projectId={selected.id}
+                title="Project Files"
+              />
+            )}
+            {activeTab === "files" && !selected.customer_id && (
+              <p className="text-muted text-sm text-center py-8">Assign a customer to this project to manage files.</p>
+            )}
           </>
         )}
       </SlidePanel>

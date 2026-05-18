@@ -108,6 +108,7 @@ async def get_customer(customer_id: str, db: AsyncSession = Depends(get_db)):
         "address_line1": c.address_line1, "address_line2": c.address_line2,
         "city": c.city, "state": c.state, "zip_code": c.zip_code,
         "notes": c.notes, "tags": c.tags or [],
+        "access_code": c.access_code,
         "total_projects": c.total_projects,
         "total_revenue": float(c.total_revenue) if c.total_revenue else 0,
         "avg_margin": float(c.avg_margin) if c.avg_margin else None,
@@ -130,6 +131,7 @@ async def update_customer(
     zip_code: str = Body(None),
     customer_type: str = Body(None),
     status: str = Body(None),
+    access_code: str = Body(None),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Customer).where(Customer.id == customer_id))
@@ -159,6 +161,8 @@ async def update_customer(
         c.type = getattr(CustomerType, customer_type.upper(), CustomerType.RESIDENTIAL)
     if status is not None:
         c.status = getattr(CustomerStatus, status.upper(), CustomerStatus.ACTIVE)
+    if access_code is not None:
+        c.access_code = access_code or None
 
     try:
         await db.commit()

@@ -9,7 +9,7 @@ import { useAppStore } from "@/stores";
 import {
   LayoutDashboard, Users, FileText, ClipboardList, Calendar,
   Package, Truck, Wrench, DollarSign, CheckCircle, TrendingUp,
-  Brain, Clock, Settings, ChevronLeft, ChevronRight,
+  Brain, Clock, Settings, ChevronLeft, ChevronRight, BarChart2,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -21,7 +21,8 @@ const NAV_ITEMS = [
   { id: "inventory", label: "Inventory", href: "/inventory", icon: Package },
   { id: "installs", label: "Installs", href: "/installs", icon: Truck },
   { id: "production", label: "Production", href: "/production", icon: Wrench },
-  { id: "financial", label: "Financial", href: "/financial", icon: DollarSign },
+  { id: "financial",    label: "Financial",   href: "/financial",    icon: DollarSign },
+  { id: "job-costing", label: "Job Costing", href: "/job-costing", icon: BarChart2 },
   { id: "qc", label: "QC", href: "/qc", icon: CheckCircle },
   { id: "growth", label: "Growth", href: "/growth", icon: TrendingUp },
   { id: "ai", label: "AI", href: "/ai", icon: Brain },

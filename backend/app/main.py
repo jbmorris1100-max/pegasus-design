@@ -3,7 +3,12 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.core.config import get_settings
+
+# ── Upload storage dir ───────────────────────────────────────
+UPLOADS_DIR = os.getenv("UPLOADS_DIR", "/app/uploads")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 settings = get_settings()
 
@@ -60,6 +65,12 @@ from app.api.v1.router import api_router
 from app.api.ws.handler import websocket_endpoint
 
 app.include_router(api_router, prefix="/api/v1")
+
+# ── Static file serving for uploads ─────────────────────────
+try:
+    app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+except RuntimeError:
+    pass  # directory may be empty on first boot — file upload creates subdirs
 
 # ── WebSocket ───────────────────────────────────────────────
 app.add_api_websocket_route("/ws", websocket_endpoint)

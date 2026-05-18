@@ -3,8 +3,12 @@
 import React, { useEffect, useState } from "react";
 import { Shell } from "@/components/ui/shell";
 import { KpiCard, Card, StatusBadge, Button } from "@/components/ui/core";
-import { Modal, FormField, FormInput, FormSelect, FormTextarea } from "@/components/ui/modal";
+import { Modal, SlidePanel, FormField, FormInput, FormSelect, FormTextarea } from "@/components/ui/modal";
+import { Toaster, toast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
+import { FileManager } from "@/components/FileManager";
+
+type PanelTab = "details" | "files";
 
 const ESTIMATE_STATUSES = [
   { value: "draft",    label: "Draft" },
@@ -24,13 +28,14 @@ export default function EstimatingPage() {
   const [error, setError]         = useState("");
   const [form, setForm]           = useState(emptyForm);
 
-  // Detail / edit
-  const [detailOpen, setDetailOpen]         = useState(false);
+  // Detail / edit slide panel
+  const [panelOpen, setPanelOpen]           = useState(false);
   const [selected, setSelected]             = useState<any>(null);
   const [editForm, setEditForm]             = useState<any>({});
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editError, setEditError]           = useState("");
   const [deleting, setDeleting]             = useState(false);
+  const [activeTab, setActiveTab]           = useState<PanelTab>("details");
 
   async function fetchData() {
     try {
@@ -57,12 +62,14 @@ export default function EstimatingPage() {
       setForm(emptyForm);
       setLoading(true);
       await fetchData();
+      toast("Estimate created");
     } catch { setError("Failed to create estimate."); }
     finally { setSubmitting(false); }
   }
 
-  async function openDetail(id: string) {
-    setDetailOpen(true);
+  async function openPanel(id: string) {
+    setPanelOpen(true);
+    setActiveTab("details");
     setSelected(null);
     setEditError("");
     try {
@@ -81,7 +88,8 @@ export default function EstimatingPage() {
         terms:                   (d as any).terms ?? "",
       });
     } catch {
-      setEditError("Failed to load estimate.");
+      toast("Failed to load estimate", "error");
+      setPanelOpen(false);
     }
   }
 
@@ -96,9 +104,11 @@ export default function EstimatingPage() {
         estimated_material_cost: parseFloat(editForm.estimated_material_cost) || 0,
         target_margin: parseFloat(editForm.target_margin) || 0.40,
       });
-      setDetailOpen(false);
+      setPanelOpen(false);
       await fetchData();
+      toast("Estimate saved");
     } catch {
+      toast("Failed to update estimate", "error");
       setEditError("Failed to update estimate.");
     } finally {
       setEditSubmitting(false);
@@ -111,10 +121,11 @@ export default function EstimatingPage() {
     setDeleting(true);
     try {
       await api.delete(`/estimates/${selected.id}`);
-      setDetailOpen(false);
+      setPanelOpen(false);
       await fetchData();
+      toast("Estimate deleted");
     } catch {
-      setEditError("Failed to delete estimate.");
+      toast("Failed to delete estimate", "error");
     } finally {
       setDeleting(false);
     }
@@ -148,7 +159,7 @@ export default function EstimatingPage() {
               <div
                 key={e.id}
                 className="data-row cursor-pointer hover:bg-surface-elevated rounded px-3"
-                onClick={() => openDetail(e.id)}
+                onClick={() => openPanel(e.id)}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -202,52 +213,93 @@ export default function EstimatingPage() {
         </div>
       </Modal>
 
-      {/* ── Detail / Edit Modal ───────────────────────────── */}
-      <Modal open={detailOpen} onClose={() => setDetailOpen(false)} title={selected?.title ?? "Estimate Details"}>
-        {!selected && !editError && <p className="text-muted text-sm py-4 text-center">Loading…</p>}
-        {editError && <p className="text-red-400 text-xs mb-3">{editError}</p>}
-        {selected && (
+      {/* ── Detail / Edit Slide Panel ─────────────────────── */}
+      <SlidePanel open={panelOpen} onClose={() => setPanelOpen(false)} title={selected?.title ?? "Estimate Details"}>
+        {!selected ? (
+          <p className="text-muted text-sm py-4 text-center">Loading…</p>
+        ) : (
           <>
-            <FormField label="Title" required>
-              <FormInput value={editForm.title} onChange={(v) => setEditForm({ ...editForm, title: v })} />
-            </FormField>
-            <FormField label="Status">
-              <FormSelect value={editForm.status} onChange={(v) => setEditForm({ ...editForm, status: v })} options={ESTIMATE_STATUSES} />
-            </FormField>
-            <div className="grid grid-cols-3 gap-3">
-              <FormField label="Total ($)">
-                <FormInput value={editForm.total} onChange={(v) => setEditForm({ ...editForm, total: v })} type="number" />
-              </FormField>
-              <FormField label="Labor Hours">
-                <FormInput value={editForm.estimated_labor_hours} onChange={(v) => setEditForm({ ...editForm, estimated_labor_hours: v })} type="number" />
-              </FormField>
-              <FormField label="Material Cost">
-                <FormInput value={editForm.estimated_material_cost} onChange={(v) => setEditForm({ ...editForm, estimated_material_cost: v })} type="number" />
-              </FormField>
+            {/* Tab bar */}
+            <div className="flex gap-1 mb-5 border-b border-[rgba(94,234,212,0.08)]">
+              {(["details", "files"] as PanelTab[]).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-3 pb-2 text-xs font-semibold capitalize transition-colors border-b-2 -mb-px ${
+                    activeTab === tab
+                      ? "border-accent text-accent"
+                      : "border-transparent text-muted hover:text-foreground"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
-            <FormField label="Target Margin">
-              <FormInput value={editForm.target_margin} onChange={(v) => setEditForm({ ...editForm, target_margin: v })} placeholder="0.40 = 40%" />
-            </FormField>
-            <FormField label="Notes">
-              <FormTextarea value={editForm.notes} onChange={(v) => setEditForm({ ...editForm, notes: v })} />
-            </FormField>
-            <FormField label="Terms">
-              <FormTextarea value={editForm.terms} onChange={(v) => setEditForm({ ...editForm, terms: v })} />
-            </FormField>
-            <div className="flex items-center justify-between mt-4 pt-2">
-              <Button variant="danger" size="sm" onClick={handleDelete} disabled={deleting}>
-                {deleting ? "Deleting…" : "Delete"}
-              </Button>
-              <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => setDetailOpen(false)}>Cancel</Button>
-                <Button variant="primary" onClick={handleEditSubmit} disabled={editSubmitting}>
-                  {editSubmitting ? "Saving…" : "Save Changes"}
-                </Button>
-              </div>
-            </div>
+
+            {activeTab === "details" && (
+              <>
+                {editError && <p className="text-[#F87171] text-xs mb-3">{editError}</p>}
+                <div className="flex items-center gap-2 mb-4 pb-4 border-b border-[rgba(94,234,212,0.08)]">
+                  <StatusBadge status={selected.status} />
+                  <span className="text-[11px] text-muted ml-auto">${((selected.total as number) || 0).toLocaleString()}</span>
+                </div>
+
+                <FormField label="Title" required>
+                  <FormInput value={editForm.title} onChange={(v) => setEditForm({ ...editForm, title: v })} />
+                </FormField>
+                <FormField label="Status">
+                  <FormSelect value={editForm.status} onChange={(v) => setEditForm({ ...editForm, status: v })} options={ESTIMATE_STATUSES} />
+                </FormField>
+                <div className="grid grid-cols-3 gap-3">
+                  <FormField label="Total ($)">
+                    <FormInput value={editForm.total} onChange={(v) => setEditForm({ ...editForm, total: v })} type="number" />
+                  </FormField>
+                  <FormField label="Labor Hours">
+                    <FormInput value={editForm.estimated_labor_hours} onChange={(v) => setEditForm({ ...editForm, estimated_labor_hours: v })} type="number" />
+                  </FormField>
+                  <FormField label="Material Cost">
+                    <FormInput value={editForm.estimated_material_cost} onChange={(v) => setEditForm({ ...editForm, estimated_material_cost: v })} type="number" />
+                  </FormField>
+                </div>
+                <FormField label="Target Margin">
+                  <FormInput value={editForm.target_margin} onChange={(v) => setEditForm({ ...editForm, target_margin: v })} placeholder="0.40 = 40%" />
+                </FormField>
+                <FormField label="Notes">
+                  <FormTextarea value={editForm.notes} onChange={(v) => setEditForm({ ...editForm, notes: v })} />
+                </FormField>
+                <FormField label="Terms">
+                  <FormTextarea value={editForm.terms} onChange={(v) => setEditForm({ ...editForm, terms: v })} />
+                </FormField>
+
+                <div className="flex items-center justify-between mt-6 pt-4 border-t border-[rgba(94,234,212,0.08)]">
+                  <Button variant="danger" size="sm" onClick={handleDelete} disabled={deleting}>
+                    {deleting ? "Deleting…" : "Delete"}
+                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" onClick={() => setPanelOpen(false)}>Cancel</Button>
+                    <Button variant="primary" onClick={handleEditSubmit} disabled={editSubmitting}>
+                      {editSubmitting ? "Saving…" : "Save Changes"}
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {activeTab === "files" && selected.customer_id && (
+              <FileManager
+                customerId={selected.customer_id}
+                estimateId={selected.id}
+                title="Estimate Files"
+              />
+            )}
+            {activeTab === "files" && !selected.customer_id && (
+              <p className="text-muted text-sm text-center py-8">Assign a customer to this estimate to manage files.</p>
+            )}
           </>
         )}
-      </Modal>
+      </SlidePanel>
+
+      <Toaster />
     </Shell>
   );
 }

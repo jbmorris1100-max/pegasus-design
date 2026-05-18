@@ -38,6 +38,9 @@ class Customer(BaseModel):
     notes = Column(Text, nullable=True)
     tags = Column(ARRAY(String), default=list)
 
+    # Portal access
+    access_code = Column(String(6), nullable=True)
+
     # Metrics (updated by AI/event processing)
     total_projects = Column(Integer, default=0)
     total_revenue = Column(Float, default=0.0)
@@ -49,6 +52,8 @@ class Customer(BaseModel):
     contacts = relationship("Contact", back_populates="customer", cascade="all, delete-orphan")
     projects = relationship("Project", back_populates="customer")
     estimates = relationship("Estimate", back_populates="customer")
+    files = relationship("FileRecord", back_populates="customer")
+    messages = relationship("Message", back_populates="customer", order_by="Message.created_at")
 
 
 class Contact(BaseModel):

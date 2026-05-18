@@ -10,6 +10,7 @@ from app.models.scheduling import (
 from app.models.installs import Install, QCCheck, Callback
 from app.models.events import Event, AIRecommendation, Notification, DailyBrief
 from app.models.users import User, AuditLog, InlineIQLaborEntry, InlineIQSyncLog
+from app.models.files import FileRecord, Message
 
 __all__ = [
     "BaseModel", "Base",
@@ -28,4 +29,6 @@ __all__ = [
     "Event", "AIRecommendation", "Notification", "DailyBrief",
     # Users & Integration
     "User", "AuditLog", "InlineIQLaborEntry", "InlineIQSyncLog",
+    # Files & Messages
+    "FileRecord", "Message",
 ]
