@@ -14,7 +14,8 @@ const ESTIMATE_STATUSES = [
   { value: "draft",    label: "Draft" },
   { value: "sent",     label: "Sent" },
   { value: "approved", label: "Approved" },
-  { value: "rejected", label: "Rejected" },
+  { value: "revised",  label: "Revised" },
+  { value: "declined", label: "Declined" },
   { value: "expired",  label: "Expired" },
 ];
 

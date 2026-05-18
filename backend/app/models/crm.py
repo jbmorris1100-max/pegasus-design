@@ -53,7 +53,7 @@ class Customer(BaseModel):
     projects = relationship("Project", back_populates="customer")
     estimates = relationship("Estimate", back_populates="customer")
     files = relationship("FileRecord", back_populates="customer")
-    messages = relationship("Message", back_populates="customer", order_by="messages.created_at")
+    messages = relationship("Message", back_populates="customer")
 
 
 class Contact(BaseModel):
