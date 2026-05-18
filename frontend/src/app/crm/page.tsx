@@ -3,9 +3,10 @@
 import React, { useEffect, useState } from "react";
 import { Shell } from "@/components/ui/shell";
 import { Card, StatusBadge, Button } from "@/components/ui/core";
-import { Modal, FormField, FormInput, FormSelect, FormTextarea } from "@/components/ui/modal";
+import { Modal, SlidePanel, FormField, FormInput, FormSelect, FormTextarea } from "@/components/ui/modal";
+import { Toaster, toast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
-import { Users, DollarSign, MapPin, Phone, Mail } from "lucide-react";
+import { Users, Mail, Phone, MapPin } from "lucide-react";
 
 const CUSTOMER_TYPES = [
   { value: "residential", label: "Residential" },
@@ -22,23 +23,25 @@ const CUSTOMER_STATUSES = [
   { value: "archived", label: "Archived" },
 ];
 
-const emptyForm = { name: "", email: "", phone: "", city: "", state: "", zip_code: "", address_line1: "", customer_type: "residential", notes: "" };
+const emptyForm = {
+  name: "", email: "", phone: "", city: "", state: "",
+  zip_code: "", address_line1: "", customer_type: "residential", notes: "",
+};
 
 export default function CrmPage() {
-  const [items, setItems]         = useState<any[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [items, setItems]           = useState<any[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [createOpen, setCreateOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError]         = useState("");
-  const [form, setForm]           = useState(emptyForm);
+  const [createError, setCreateError] = useState("");
+  const [form, setForm]             = useState(emptyForm);
 
-  // Detail / edit modal
-  const [detailOpen, setDetailOpen]     = useState(false);
-  const [selected, setSelected]         = useState<any>(null);
-  const [editForm, setEditForm]         = useState<any>({});
+  // Detail / edit slide panel
+  const [panelOpen, setPanelOpen]           = useState(false);
+  const [selected, setSelected]             = useState<any>(null);
+  const [editForm, setEditForm]             = useState<any>({});
   const [editSubmitting, setEditSubmitting] = useState(false);
-  const [editError, setEditError]       = useState("");
-  const [deleting, setDeleting]         = useState(false);
+  const [deleting, setDeleting]             = useState(false);
 
   async function fetchData() {
     try {
@@ -53,54 +56,57 @@ export default function CrmPage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  async function handleSubmit() {
-    if (!form.name.trim()) { setError("Name is required."); return; }
-    setSubmitting(true); setError("");
+  async function handleCreate() {
+    if (!form.name.trim()) { setCreateError("Name is required."); return; }
+    setSubmitting(true); setCreateError("");
     try {
       await api.post("/customers/", form);
-      setModalOpen(false);
+      setCreateOpen(false);
       setForm(emptyForm);
       await fetchData();
+      toast("Customer created");
     } catch {
-      setError("Failed to create customer.");
+      setCreateError("Failed to create customer.");
+      toast("Failed to create customer", "error");
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function openDetail(id: string) {
-    setDetailOpen(true);
+  async function openPanel(id: string) {
+    setPanelOpen(true);
     setSelected(null);
-    setEditError("");
     try {
       const d = await api.get(`/customers/${id}`);
       setSelected(d);
       setEditForm({
-        name: (d as any).name ?? "",
-        email: (d as any).email ?? "",
-        phone: (d as any).phone ?? "",
-        city: (d as any).city ?? "",
-        state: (d as any).state ?? "",
-        zip_code: (d as any).zip_code ?? "",
+        name:          (d as any).name ?? "",
+        email:         (d as any).email ?? "",
+        phone:         (d as any).phone ?? "",
+        city:          (d as any).city ?? "",
+        state:         (d as any).state ?? "",
+        zip_code:      (d as any).zip_code ?? "",
         address_line1: (d as any).address_line1 ?? "",
-        customer_type: (d as any).type ?? "residential",
-        status: (d as any).status ?? "active",
-        notes: (d as any).notes ?? "",
+        customer_type: (d as any).customer_type ?? "residential",
+        status:        (d as any).status ?? "active",
+        notes:         (d as any).notes ?? "",
       });
     } catch {
-      setEditError("Failed to load customer.");
+      toast("Failed to load customer", "error");
+      setPanelOpen(false);
     }
   }
 
-  async function handleEditSubmit() {
-    if (!editForm.name?.trim()) { setEditError("Name is required."); return; }
-    setEditSubmitting(true); setEditError("");
+  async function handleSave() {
+    if (!editForm.name?.trim()) { toast("Name is required", "error"); return; }
+    setEditSubmitting(true);
     try {
       await api.put(`/customers/${selected.id}`, editForm);
-      setDetailOpen(false);
+      setPanelOpen(false);
       await fetchData();
+      toast("Customer saved");
     } catch {
-      setEditError("Failed to update customer.");
+      toast("Failed to save customer", "error");
     } finally {
       setEditSubmitting(false);
     }
@@ -108,14 +114,15 @@ export default function CrmPage() {
 
   async function handleDelete() {
     if (!selected) return;
-    if (!window.confirm(`Delete ${selected.name}? This cannot be undone.`)) return;
+    if (!window.confirm(`Archive ${selected.name}? They will be marked inactive but not removed.`)) return;
     setDeleting(true);
     try {
-      await api.delete(`/customers/${selected.id}`);
-      setDetailOpen(false);
+      await api.put(`/customers/${selected.id}`, { status: "archived" });
+      setPanelOpen(false);
       await fetchData();
+      toast("Customer archived");
     } catch {
-      setEditError("Failed to delete customer.");
+      toast("Failed to archive customer", "error");
     } finally {
       setDeleting(false);
     }
@@ -131,7 +138,7 @@ export default function CrmPage() {
             <h1 className="page-title">CRM & Relationships</h1>
             <p className="page-subtitle">Customer intelligence and relationship tracking</p>
           </div>
-          <Button variant="primary" size="sm" onClick={() => setModalOpen(true)}>+ New Customer</Button>
+          <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>+ New Customer</Button>
         </div>
 
         {items.length === 0 ? (
@@ -144,7 +151,11 @@ export default function CrmPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {items.map((c) => (
-              <Card key={c.id} className="cursor-pointer hover:border-accent/30 transition-colors" onClick={() => openDetail(c.id)}>
+              <Card
+                key={c.id}
+                className="cursor-pointer hover:border-accent/30 transition-colors"
+                onClick={() => openPanel(c.id)}
+              >
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="font-medium text-sm">{c.name}</h3>
                   <StatusBadge status={c.status} />
@@ -167,9 +178,7 @@ export default function CrmPage() {
                 <div className="flex items-center justify-between mt-3 pt-2 border-t border-border">
                   <StatusBadge status={c.customer_type || c.type} />
                   {c.total_revenue > 0 && (
-                    <span className="text-[11px] font-mono text-accent">
-                      ${c.total_revenue.toLocaleString()}
-                    </span>
+                    <span className="text-[11px] font-mono text-accent">${c.total_revenue.toLocaleString()}</span>
                   )}
                 </div>
               </Card>
@@ -179,11 +188,11 @@ export default function CrmPage() {
       </div>
 
       {/* ── Create Modal ─────────────────────────────────── */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="New Customer">
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New Customer">
+        {createError && <p className="text-red-400 text-xs mb-3">{createError}</p>}
         <FormField label="Name" required>
           <FormInput value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="Customer name" />
         </FormField>
-        {error && !form.name && <p className="text-red-400 text-xs mb-3">{error}</p>}
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Email">
             <FormInput value={form.email} onChange={(v) => setForm({ ...form, email: v })} placeholder="email@example.com" />
@@ -206,21 +215,33 @@ export default function CrmPage() {
         <FormField label="Notes">
           <FormTextarea value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} placeholder="Optional notes" />
         </FormField>
-        {error && form.name && <p className="text-red-400 text-xs mb-2">{error}</p>}
         <div className="flex justify-end gap-2 mt-4">
-          <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button>
-          <Button variant="primary" onClick={handleSubmit} disabled={submitting}>
+          <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancel</Button>
+          <Button variant="primary" onClick={handleCreate} disabled={submitting}>
             {submitting ? "Saving…" : "Save"}
           </Button>
         </div>
       </Modal>
 
-      {/* ── Detail / Edit Modal ───────────────────────────── */}
-      <Modal open={detailOpen} onClose={() => setDetailOpen(false)} title={selected?.name ?? "Customer Details"}>
-        {!selected && !editError && <p className="text-muted text-sm py-4 text-center">Loading…</p>}
-        {editError && <p className="text-red-400 text-xs mb-3">{editError}</p>}
-        {selected && (
+      {/* ── Detail / Edit Slide Panel ─────────────────────── */}
+      <SlidePanel open={panelOpen} onClose={() => setPanelOpen(false)} title={selected?.name ?? "Customer Details"}>
+        {!selected ? (
+          <p className="text-muted text-sm py-4 text-center">Loading…</p>
+        ) : (
           <>
+            {/* Summary row */}
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[rgba(94,234,212,0.08)]">
+              <div className="w-10 h-10 rounded-full bg-accent-soft flex items-center justify-center flex-shrink-0">
+                <span className="text-accent font-semibold text-sm">{selected.name?.[0]?.toUpperCase()}</span>
+              </div>
+              <div>
+                <div className="font-semibold text-sm">{selected.name}</div>
+                <div className="text-[11px] text-muted mt-0.5">
+                  {selected.total_projects || 0} projects · ${(selected.total_revenue || 0).toLocaleString()} revenue
+                </div>
+              </div>
+            </div>
+
             <FormField label="Name" required>
               <FormInput value={editForm.name} onChange={(v) => setEditForm({ ...editForm, name: v })} />
             </FormField>
@@ -232,12 +253,18 @@ export default function CrmPage() {
                 <FormInput value={editForm.phone} onChange={(v) => setEditForm({ ...editForm, phone: v })} />
               </FormField>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <FormField label="Address">
+              <FormInput value={editForm.address_line1} onChange={(v) => setEditForm({ ...editForm, address_line1: v })} placeholder="Street address" />
+            </FormField>
+            <div className="grid grid-cols-3 gap-3">
               <FormField label="City">
                 <FormInput value={editForm.city} onChange={(v) => setEditForm({ ...editForm, city: v })} />
               </FormField>
               <FormField label="State">
                 <FormInput value={editForm.state} onChange={(v) => setEditForm({ ...editForm, state: v })} />
+              </FormField>
+              <FormField label="Zip">
+                <FormInput value={editForm.zip_code} onChange={(v) => setEditForm({ ...editForm, zip_code: v })} />
               </FormField>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -251,20 +278,23 @@ export default function CrmPage() {
             <FormField label="Notes">
               <FormTextarea value={editForm.notes} onChange={(v) => setEditForm({ ...editForm, notes: v })} />
             </FormField>
-            <div className="flex items-center justify-between mt-4 pt-2">
+
+            <div className="flex items-center justify-between mt-6 pt-4 border-t border-[rgba(94,234,212,0.08)]">
               <Button variant="danger" size="sm" onClick={handleDelete} disabled={deleting}>
-                {deleting ? "Deleting…" : "Delete"}
+                {deleting ? "Archiving…" : "Archive"}
               </Button>
               <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => setDetailOpen(false)}>Cancel</Button>
-                <Button variant="primary" onClick={handleEditSubmit} disabled={editSubmitting}>
+                <Button variant="ghost" onClick={() => setPanelOpen(false)}>Cancel</Button>
+                <Button variant="primary" onClick={handleSave} disabled={editSubmitting}>
                   {editSubmitting ? "Saving…" : "Save Changes"}
                 </Button>
               </div>
             </div>
           </>
         )}
-      </Modal>
+      </SlidePanel>
+
+      <Toaster />
     </Shell>
   );
 }

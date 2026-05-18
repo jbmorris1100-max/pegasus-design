@@ -3,35 +3,36 @@
 import React, { useEffect, useState } from "react";
 import { Shell } from "@/components/ui/shell";
 import { KpiCard, Card, StatusBadge, Button } from "@/components/ui/core";
-import { Modal, FormField, FormInput, FormSelect, FormTextarea } from "@/components/ui/modal";
+import { Modal, SlidePanel, FormField, FormInput, FormSelect, FormTextarea } from "@/components/ui/modal";
+import { Toaster, toast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
-import { ClipboardList, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 
 const PROJECT_TYPES = [
-  { value: "other",          label: "Other" },
-  { value: "kitchen",        label: "Kitchen" },
-  { value: "bathroom",       label: "Bathroom" },
-  { value: "built_in",       label: "Built-In" },
-  { value: "closet",         label: "Closet" },
-  { value: "laundry",        label: "Laundry" },
-  { value: "home_office",    label: "Home Office" },
-  { value: "entertainment",  label: "Entertainment" },
-  { value: "commercial",     label: "Commercial" },
+  { value: "other",           label: "Other" },
+  { value: "kitchen",         label: "Kitchen" },
+  { value: "bathroom",        label: "Bathroom" },
+  { value: "built_in",        label: "Built-In" },
+  { value: "closet",          label: "Closet" },
+  { value: "laundry",         label: "Laundry" },
+  { value: "home_office",     label: "Home Office" },
+  { value: "entertainment",   label: "Entertainment" },
+  { value: "commercial",      label: "Commercial" },
   { value: "custom_millwork", label: "Custom Millwork" },
 ];
 
 const PROJECT_STATUSES = [
-  { value: "lead",               label: "Lead" },
-  { value: "estimating",         label: "Estimating" },
-  { value: "estimate_sent",      label: "Estimate Sent" },
-  { value: "approved",           label: "Approved" },
-  { value: "in_production",      label: "In Production" },
-  { value: "finishing",          label: "Finishing" },
-  { value: "ready_for_install",  label: "Ready for Install" },
-  { value: "installing",         label: "Installing" },
-  { value: "completed",          label: "Completed" },
-  { value: "on_hold",            label: "On Hold" },
-  { value: "cancelled",          label: "Cancelled" },
+  { value: "lead",              label: "Lead" },
+  { value: "estimating",        label: "Estimating" },
+  { value: "estimate_sent",     label: "Estimate Sent" },
+  { value: "approved",          label: "Approved" },
+  { value: "in_production",     label: "In Production" },
+  { value: "finishing",         label: "Finishing" },
+  { value: "ready_for_install", label: "Ready for Install" },
+  { value: "installing",        label: "Installing" },
+  { value: "completed",         label: "Completed" },
+  { value: "on_hold",           label: "On Hold" },
+  { value: "cancelled",         label: "Cancelled" },
 ];
 
 const RISK_LEVELS = [
@@ -41,22 +42,24 @@ const RISK_LEVELS = [
   { value: "critical", label: "Critical" },
 ];
 
-const emptyForm = { name: "", description: "", customer_id: "", project_type: "other", target_completion: "", estimated_total: "0", estimated_labor_hours: "0" };
+const emptyForm = {
+  name: "", description: "", customer_id: "", project_type: "other",
+  target_completion: "", estimated_total: "0", estimated_labor_hours: "0",
+};
 
 export default function ProjectsPage() {
-  const [items, setItems]         = useState<any[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [items, setItems]           = useState<any[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [createOpen, setCreateOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError]         = useState("");
-  const [form, setForm]           = useState(emptyForm);
+  const [createError, setCreateError] = useState("");
+  const [form, setForm]             = useState(emptyForm);
 
-  // Detail / edit
-  const [detailOpen, setDetailOpen]         = useState(false);
+  // Detail / edit slide panel
+  const [panelOpen, setPanelOpen]           = useState(false);
   const [selected, setSelected]             = useState<any>(null);
   const [editForm, setEditForm]             = useState<any>({});
   const [editSubmitting, setEditSubmitting] = useState(false);
-  const [editError, setEditError]           = useState("");
   const [deleting, setDeleting]             = useState(false);
 
   async function fetchData() {
@@ -69,64 +72,71 @@ export default function ProjectsPage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  async function handleSubmit() {
-    if (!form.name.trim()) { setError("Project name is required."); return; }
-    setSubmitting(true); setError("");
+  async function handleCreate() {
+    if (!form.name.trim()) { setCreateError("Project name is required."); return; }
+    setSubmitting(true); setCreateError("");
     try {
       await api.post("/projects/", {
         ...form,
         estimated_total: parseFloat(form.estimated_total) || 0,
         estimated_labor_hours: parseFloat(form.estimated_labor_hours) || 0,
       });
-      setModalOpen(false);
+      setCreateOpen(false);
       setForm(emptyForm);
       setLoading(true);
       await fetchData();
-    } catch { setError("Failed to create project."); }
-    finally { setSubmitting(false); }
+      toast("Project created");
+    } catch (e: any) {
+      const msg = e?.message || "Failed to create project.";
+      setCreateError(msg);
+      toast(msg, "error");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  async function openDetail(id: string) {
-    setDetailOpen(true);
+  async function openPanel(id: string) {
+    setPanelOpen(true);
     setSelected(null);
-    setEditError("");
     try {
       const d = await api.get(`/projects/${id}`);
       setSelected(d);
       setEditForm({
-        name:                   (d as any).name ?? "",
-        description:            (d as any).description ?? "",
-        project_type:           (d as any).project_type ?? "other",
-        status:                 (d as any).status ?? "lead",
-        risk_level:             (d as any).risk_level ?? "low",
-        target_start:           (d as any).target_start ?? "",
-        target_completion:      (d as any).target_completion ?? "",
-        actual_start:           (d as any).actual_start ?? "",
-        actual_completion:      (d as any).actual_completion ?? "",
-        install_date:           (d as any).install_date ?? "",
-        estimated_total:        String((d as any).estimated_total ?? "0"),
-        estimated_labor_hours:  String((d as any).estimated_labor_hours ?? "0"),
-        address:                (d as any).address ?? "",
-        notes:                  (d as any).notes ?? "",
+        name:                  (d as any).name ?? "",
+        description:           (d as any).description ?? "",
+        project_type:          (d as any).project_type ?? "other",
+        status:                (d as any).status ?? "lead",
+        risk_level:            (d as any).risk_level ?? "low",
+        target_start:          (d as any).target_start ?? "",
+        target_completion:     (d as any).target_completion ?? "",
+        actual_start:          (d as any).actual_start ?? "",
+        actual_completion:     (d as any).actual_completion ?? "",
+        install_date:          (d as any).install_date ?? "",
+        estimated_total:       String((d as any).estimated_total ?? "0"),
+        estimated_labor_hours: String((d as any).estimated_labor_hours ?? "0"),
+        address:               (d as any).address ?? "",
+        notes:                 (d as any).notes ?? "",
       });
     } catch {
-      setEditError("Failed to load project.");
+      toast("Failed to load project", "error");
+      setPanelOpen(false);
     }
   }
 
-  async function handleEditSubmit() {
-    if (!editForm.name?.trim()) { setEditError("Name is required."); return; }
-    setEditSubmitting(true); setEditError("");
+  async function handleSave() {
+    if (!editForm.name?.trim()) { toast("Name is required", "error"); return; }
+    setEditSubmitting(true);
     try {
       await api.put(`/projects/${selected.id}`, {
         ...editForm,
         estimated_total:       parseFloat(editForm.estimated_total) || 0,
         estimated_labor_hours: parseFloat(editForm.estimated_labor_hours) || 0,
       });
-      setDetailOpen(false);
+      setPanelOpen(false);
       await fetchData();
+      toast("Project saved");
     } catch {
-      setEditError("Failed to update project.");
+      toast("Failed to save project", "error");
     } finally {
       setEditSubmitting(false);
     }
@@ -138,10 +148,11 @@ export default function ProjectsPage() {
     setDeleting(true);
     try {
       await api.delete(`/projects/${selected.id}`);
-      setDetailOpen(false);
+      setPanelOpen(false);
       await fetchData();
+      toast("Project deleted");
     } catch {
-      setEditError("Failed to delete project.");
+      toast("Failed to delete project", "error");
     } finally {
       setDeleting(false);
     }
@@ -158,8 +169,11 @@ export default function ProjectsPage() {
     <Shell>
       <div className="space-y-5 animate-in">
         <div className="flex items-center justify-between">
-          <div><h1 className="page-title">Project Tracking</h1><p className="page-subtitle">Full lifecycle from lead to completion</p></div>
-          <Button variant="primary" size="sm" onClick={() => setModalOpen(true)}>+ New Project</Button>
+          <div>
+            <h1 className="page-title">Project Tracking</h1>
+            <p className="page-subtitle">Full lifecycle from lead to completion</p>
+          </div>
+          <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>+ New Project</Button>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -176,8 +190,8 @@ export default function ProjectsPage() {
             {items.map((p) => (
               <div
                 key={p.id}
-                className="data-row cursor-pointer hover:bg-surface-elevated rounded px-3"
-                onClick={() => openDetail(p.id)}
+                className="data-row cursor-pointer hover:bg-surface-elevated rounded px-3 transition-colors"
+                onClick={() => openPanel(p.id)}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -202,8 +216,8 @@ export default function ProjectsPage() {
       </div>
 
       {/* ── Create Modal ─────────────────────────────────── */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="New Project">
-        {error && <div className="alert-bad mb-4 text-sm">{error}</div>}
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New Project">
+        {createError && <div className="alert-bad mb-4 text-sm">{createError}</div>}
         <FormField label="Project Name" required>
           <FormInput value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="e.g., Custom Kitchen Cabinetry" />
         </FormField>
@@ -228,17 +242,24 @@ export default function ProjectsPage() {
           <FormTextarea value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
         </FormField>
         <div className="flex items-center gap-3 pt-2">
-          <Button variant="primary" onClick={handleSubmit} disabled={submitting}>{submitting ? "Creating…" : "Create Project"}</Button>
-          <Button variant="ghost" size="sm" onClick={() => setModalOpen(false)}>Cancel</Button>
+          <Button variant="primary" onClick={handleCreate} disabled={submitting}>{submitting ? "Creating…" : "Create Project"}</Button>
+          <Button variant="ghost" size="sm" onClick={() => setCreateOpen(false)}>Cancel</Button>
         </div>
       </Modal>
 
-      {/* ── Detail / Edit Modal ───────────────────────────── */}
-      <Modal open={detailOpen} onClose={() => setDetailOpen(false)} title={selected?.name ?? "Project Details"}>
-        {!selected && !editError && <p className="text-muted text-sm py-4 text-center">Loading…</p>}
-        {editError && <p className="text-red-400 text-xs mb-3">{editError}</p>}
-        {selected && (
+      {/* ── Detail / Edit Slide Panel ─────────────────────── */}
+      <SlidePanel open={panelOpen} onClose={() => setPanelOpen(false)} title={selected?.name ?? "Project Details"}>
+        {!selected ? (
+          <p className="text-muted text-sm py-4 text-center">Loading…</p>
+        ) : (
           <>
+            {/* Quick status row */}
+            <div className="flex items-center gap-2 mb-6 pb-4 border-b border-[rgba(94,234,212,0.08)]">
+              <StatusBadge status={selected.status} />
+              {selected.risk_level !== "low" && <StatusBadge status={selected.risk_level} />}
+              <span className="text-[11px] text-muted ml-auto">${(selected.estimated_total || 0).toLocaleString()} est.</span>
+            </div>
+
             <FormField label="Project Name" required>
               <FormInput value={editForm.name} onChange={(v) => setEditForm({ ...editForm, name: v })} />
             </FormField>
@@ -255,7 +276,15 @@ export default function ProjectsPage() {
                 <FormSelect value={editForm.risk_level} onChange={(v) => setEditForm({ ...editForm, risk_level: v })} options={RISK_LEVELS} />
               </FormField>
               <FormField label="Target Completion">
-                <FormInput value={editForm.target_completion} onChange={(v) => setEditForm({ ...editForm, target_completion: v })} type="date" />
+                <FormInput value={editForm.target_completion ?? ""} onChange={(v) => setEditForm({ ...editForm, target_completion: v })} type="date" />
+              </FormField>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Target Start">
+                <FormInput value={editForm.target_start ?? ""} onChange={(v) => setEditForm({ ...editForm, target_start: v })} type="date" />
+              </FormField>
+              <FormField label="Install Date">
+                <FormInput value={editForm.install_date ?? ""} onChange={(v) => setEditForm({ ...editForm, install_date: v })} type="date" />
               </FormField>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -272,20 +301,23 @@ export default function ProjectsPage() {
             <FormField label="Notes">
               <FormTextarea value={editForm.notes} onChange={(v) => setEditForm({ ...editForm, notes: v })} />
             </FormField>
-            <div className="flex items-center justify-between mt-4 pt-2">
+
+            <div className="flex items-center justify-between mt-6 pt-4 border-t border-[rgba(94,234,212,0.08)]">
               <Button variant="danger" size="sm" onClick={handleDelete} disabled={deleting}>
                 {deleting ? "Deleting…" : "Delete"}
               </Button>
               <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => setDetailOpen(false)}>Cancel</Button>
-                <Button variant="primary" onClick={handleEditSubmit} disabled={editSubmitting}>
+                <Button variant="ghost" onClick={() => setPanelOpen(false)}>Cancel</Button>
+                <Button variant="primary" onClick={handleSave} disabled={editSubmitting}>
                   {editSubmitting ? "Saving…" : "Save Changes"}
                 </Button>
               </div>
             </div>
           </>
         )}
-      </Modal>
+      </SlidePanel>
+
+      <Toaster />
     </Shell>
   );
 }

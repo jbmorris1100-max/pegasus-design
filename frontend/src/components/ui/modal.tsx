@@ -1,15 +1,16 @@
-/** Pegasus Design — InlineIQ Modal/Drawer Component */
+/** Pegasus Design — InlineIQ Modal + SlidePanel Components */
 "use client";
 import React, { useEffect } from "react";
 
-interface ModalProps {
+interface PanelProps {
   open: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
 }
 
-export function Modal({ open, onClose, title, children }: ModalProps) {
+// ── Centered modal (for create forms) ─────────────────────────────
+export function Modal({ open, onClose, title, children }: PanelProps) {
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
@@ -24,11 +25,8 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Overlay */}
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      {/* Modal panel */}
       <div className="relative w-full max-w-lg max-h-[85vh] overflow-y-auto bg-[#0a0d10] border border-[rgba(94,234,212,0.22)] rounded-2xl shadow-[0_0_0_1px_rgba(94,234,212,0.08),0_30px_80px_rgba(0,0,0,0.6),0_0_100px_rgba(45,225,201,0.08)] animate-in">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[rgba(94,234,212,0.12)]">
           <h2 className="text-base font-semibold text-[#E6F0EE]">{title}</h2>
           <button
@@ -36,14 +34,46 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
             className="w-8 h-8 rounded-lg flex items-center justify-center text-[#5F6F6C] hover:text-[#E6F0EE] hover:bg-[rgba(94,234,212,0.06)] transition-colors"
           >✕</button>
         </div>
-        {/* Body */}
         <div className="px-6 py-5">{children}</div>
       </div>
     </div>
   );
 }
 
-/* Form field styling */
+// ── Right slide panel (for detail / edit views) ────────────────────
+export function SlidePanel({ open, onClose, title, children }: PanelProps) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open, onClose]);
+
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full sm:max-w-[480px] h-full overflow-y-auto bg-[#0a0d10] border-l border-[rgba(94,234,212,0.22)] shadow-[-20px_0_80px_rgba(0,0,0,0.7)] slide-panel-in">
+        <div className="sticky top-0 flex items-center justify-between px-6 py-4 border-b border-[rgba(94,234,212,0.12)] bg-[#0a0d10] z-10">
+          <h2 className="text-base font-semibold text-[#E6F0EE]">{title}</h2>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#5F6F6C] hover:text-[#E6F0EE] hover:bg-[rgba(94,234,212,0.06)] transition-colors"
+          >✕</button>
+        </div>
+        <div className="px-6 py-5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+// ── Form helpers ───────────────────────────────────────────────────
 export function FormField({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className="mb-4">

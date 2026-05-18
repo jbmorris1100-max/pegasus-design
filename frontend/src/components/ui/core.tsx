@@ -23,13 +23,13 @@ export function Button({ variant = "secondary", size = "md", className, children
 }
 
 // ── Card ────────────────────────────────────────────────────────
-interface CardProps { children: React.ReactNode; className?: string; elevated?: boolean; }
-export function Card({ children, className, elevated }: CardProps) {
+interface CardProps { children: React.ReactNode; className?: string; elevated?: boolean; onClick?: () => void; }
+export function Card({ children, className, elevated, onClick }: CardProps) {
   return (
-    <div className={cn(
-      elevated ? "card-elevated" : "card",
-      "animate-in", className
-    )}>{children}</div>
+    <div
+      className={cn(elevated ? "card-elevated" : "card", "animate-in", className)}
+      onClick={onClick}
+    >{children}</div>
   );
 }
 

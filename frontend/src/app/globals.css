@@ -130,6 +130,19 @@
     to   { opacity: 1; }
   }
 
+  /* Slide-in from right — used by SlidePanel */
+  .slide-panel-in { animation: slideInRight 0.25s cubic-bezier(0.32, 0.72, 0, 1); }
+  @keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0.8; }
+    to   { transform: translateX(0);    opacity: 1; }
+  }
+
+  /* Drag-over highlight for calendar drop zones */
+  .drop-zone-active {
+    background: rgba(94,234,212,0.06) !important;
+    border-color: rgba(94,234,212,0.4) !important;
+  }
+
   /* Alert */
   .alert { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px; border-radius: 10px; font-size: 13px; }
   .alert-warn { @apply alert; background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.18); color: #FBBF24; }
