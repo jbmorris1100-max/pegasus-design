@@ -1,10 +1,10 @@
 /** Pegasus Design — Unified File Manager (shared across CRM, Projects, Estimates) */
 "use client";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { toast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/core";
-import { Upload, Download, Trash2, Paperclip, FileText, Image, File } from "lucide-react";
+import { Upload, Download, Trash2, Paperclip, FileText, Image, File, Eye, X } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -18,17 +18,30 @@ function getUploadsBase(): string {
   return getApiBase().replace(/\/api\/v1$/, "");
 }
 
+/**
+ * Resolve a file_url to a fully-qualified URL the browser can fetch.
+ * New records store absolute https:// URLs (via RAILWAY_PUBLIC_DOMAIN).
+ * Legacy records store relative /uploads/... paths — prepend the backend origin.
+ */
+function resolveUrl(fileUrl: string): string {
+  if (!fileUrl) return "";
+  if (fileUrl.startsWith("http")) return fileUrl;
+  return `${getUploadsBase()}${fileUrl}`;
+}
+
 function fmtSize(bytes: number): string {
   if (!bytes) return "—";
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1048576).toFixed(1)} MB`;
+  if (bytes < 1_048_576) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1_048_576).toFixed(1)} MB`;
 }
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "";
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
+
+const IMAGE_TYPES = new Set(["png", "jpg", "jpeg", "gif", "webp"]);
 
 const FILE_ICON: Record<string, React.ReactNode> = {
   pdf:  <FileText className="w-4 h-4 text-[#F87171]" />,
@@ -57,6 +70,66 @@ const SOURCE_COLORS: Record<string, string> = {
   crm:      "text-[#FBBF24] bg-[rgba(251,191,36,0.08)] border-[rgba(251,191,36,0.2)]",
 };
 
+// ── Open / view logic ─────────────────────────────────────────────────────────
+
+function openFile(f: any, setLightbox: (url: string) => void) {
+  const url = resolveUrl(f.file_url);
+  if (IMAGE_TYPES.has(f.file_type)) {
+    setLightbox(url);
+  } else if (f.file_type === "pdf") {
+    window.open(url, "_blank", "noopener,noreferrer");
+  } else {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = f.filename || f.display_name || "download";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+}
+
+function triggerDownload(f: any) {
+  const url = resolveUrl(f.file_url);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = f.filename || f.display_name || "download";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+// ── Lightbox ──────────────────────────────────────────────────────────────────
+
+function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={url}
+        alt="Preview"
+        className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      />
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+        title="Close"
+      >
+        <X className="w-5 h-5" />
+      </button>
+    </div>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -73,6 +146,7 @@ export function FileManager({ customerId, projectId, estimateId, title = "Files"
   const [uploading,      setUploading]      = useState(false);
   const [dragOver,       setDragOver]       = useState(false);
   const [uploadCategory, setUploadCategory] = useState("other");
+  const [lightboxUrl,    setLightboxUrl]    = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   async function fetchFiles() {
@@ -99,8 +173,8 @@ export function FileManager({ customerId, projectId, estimateId, title = "Files"
       const fd = new FormData();
       fd.append("file",        file);
       fd.append("customer_id", customerId);
-      if (projectId)   fd.append("project_id",  projectId);
-      if (estimateId)  fd.append("estimate_id", estimateId);
+      if (projectId)  fd.append("project_id",  projectId);
+      if (estimateId) fd.append("estimate_id", estimateId);
       fd.append("category",    uploadCategory);
       fd.append("uploaded_by", "staff");
 
@@ -119,7 +193,6 @@ export function FileManager({ customerId, projectId, estimateId, title = "Files"
 
     setUploading(false);
     await fetchFiles();
-    // Reset input so the same file can be re-selected
     if (fileInput.current) fileInput.current.value = "";
   }
 
@@ -134,14 +207,11 @@ export function FileManager({ customerId, projectId, estimateId, title = "Files"
     }
   }
 
-  // Drag-and-drop
   const onDragOver  = (e: React.DragEvent) => { e.preventDefault(); setDragOver(true); };
   const onDragLeave = (e: React.DragEvent) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false); };
   const onDrop      = (e: React.DragEvent) => { e.preventDefault(); setDragOver(false); handleUpload(e.dataTransfer.files); };
 
-  const displayed = files.filter(f =>
-    activeCategory === "all" || f.category === activeCategory
-  );
+  const displayed = files.filter(f => activeCategory === "all" || f.category === activeCategory);
 
   return (
     <div className="mt-2">
@@ -176,54 +246,95 @@ export function FileManager({ customerId, projectId, estimateId, title = "Files"
         <p className="text-muted text-xs py-3 text-center">No files in this category.</p>
       ) : (
         <div className="space-y-1 mb-3">
-          {displayed.map(f => (
-            <div
-              key={f.id}
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border bg-surface-elevated hover:border-accent/20 transition-all group"
-            >
-              <div className="flex-shrink-0">{FILE_ICON[f.file_type] ?? <File className="w-4 h-4 text-muted" />}</div>
+          {displayed.map(f => {
+            const isImage    = IMAGE_TYPES.has(f.file_type);
+            const isViewable = isImage || f.file_type === "pdf";
+            const resolvedUrl = resolveUrl(f.file_url);
+            const displayName = f.display_name || f.filename;
 
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium truncate">{f.display_name || f.filename}</div>
-                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                  <span className="text-[10px] text-muted">{fmtSize(f.file_size)}</span>
-                  <span className="text-[10px] text-muted">·</span>
-                  <span className="text-[10px] text-muted">{fmtDate(f.created_at)}</span>
-                  {f.source && (
-                    <span className={`text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded border ${SOURCE_COLORS[f.source] ?? ""}`}>
-                      {f.source}
-                    </span>
+            return (
+              <div
+                key={f.id}
+                className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border bg-surface-elevated hover:border-accent/20 transition-all group"
+              >
+                {/* Image thumbnail OR file-type icon */}
+                {isImage ? (
+                  <button
+                    className="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-surface-high border border-border hover:border-accent/30 transition-colors"
+                    onClick={() => setLightboxUrl(resolvedUrl)}
+                    title="View image"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={resolvedUrl}
+                      alt={displayName}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                ) : (
+                  <div className="flex-shrink-0">{FILE_ICON[f.file_type] ?? <File className="w-4 h-4 text-muted" />}</div>
+                )}
+
+                {/* Name + metadata — clicking opens/views the file */}
+                <button
+                  className="flex-1 min-w-0 text-left"
+                  onClick={() => openFile(f, setLightboxUrl)}
+                  title={isViewable ? (isImage ? "View image" : "Open PDF") : "Download"}
+                >
+                  <div className="text-xs font-medium truncate hover:text-accent transition-colors cursor-pointer">
+                    {displayName}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className="text-[10px] text-muted">{fmtSize(f.file_size)}</span>
+                    <span className="text-[10px] text-muted">·</span>
+                    <span className="text-[10px] text-muted">{fmtDate(f.created_at)}</span>
+                    {f.source && (
+                      <span className={`text-[9px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded border ${SOURCE_COLORS[f.source] ?? ""}`}>
+                        {f.source}
+                      </span>
+                    )}
+                    {f.category && f.category !== "other" && (
+                      <span className="text-[9px] text-muted px-1.5 py-0.5 rounded bg-surface-high border border-border uppercase tracking-wider">
+                        {f.category}
+                      </span>
+                    )}
+                  </div>
+                </button>
+
+                {/* Action buttons (always visible) */}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {/* View / open button */}
+                  <button
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:text-accent hover:bg-accent/10 transition-colors"
+                    onClick={() => openFile(f, setLightboxUrl)}
+                    title={isImage ? "View image" : f.file_type === "pdf" ? "Open PDF" : "Download"}
+                  >
+                    {isViewable ? <Eye className="w-3.5 h-3.5" /> : <Download className="w-3.5 h-3.5" />}
+                  </button>
+
+                  {/* Explicit download (only shown for viewable files so users can choose) */}
+                  {isViewable && (
+                    <button
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:text-accent hover:bg-accent/10 transition-colors opacity-0 group-hover:opacity-100 transition-all"
+                      onClick={() => triggerDownload(f)}
+                      title="Download"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </button>
                   )}
-                  {f.category && f.category !== "other" && (
-                    <span className="text-[9px] text-muted px-1.5 py-0.5 rounded bg-surface-high border border-border uppercase tracking-wider">
-                      {f.category}
-                    </span>
-                  )}
+
+                  {/* Delete button */}
+                  <button
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:text-[#F87171] hover:bg-[rgba(248,113,113,0.1)] transition-colors opacity-0 group-hover:opacity-100 transition-all"
+                    onClick={() => handleDelete(f.id, displayName)}
+                    title="Delete"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
-
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <a
-                  href={`${getUploadsBase()}${f.file_url}`}
-                  download={f.filename}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:text-accent hover:bg-accent/10 transition-colors"
-                  title="Download"
-                  onClick={e => e.stopPropagation()}
-                >
-                  <Download className="w-3.5 h-3.5" />
-                </a>
-                <button
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:text-[#F87171] hover:bg-[rgba(248,113,113,0.1)] transition-colors"
-                  onClick={() => handleDelete(f.id, f.display_name || f.filename)}
-                  title="Delete"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -252,7 +363,6 @@ export function FileManager({ customerId, projectId, estimateId, title = "Files"
             </p>
             <p className="text-[10px] text-muted mt-0.5">PDF · PNG · JPG · DWG · DXF · DOCX · XLSX — max 50 MB</p>
 
-            {/* Category picker inside drop zone */}
             <div className="mt-2.5 flex items-center justify-center gap-2" onClick={e => e.stopPropagation()}>
               <span className="text-[10px] text-muted">Upload as:</span>
               <select
@@ -277,6 +387,11 @@ export function FileManager({ customerId, projectId, estimateId, title = "Files"
         className="hidden"
         onChange={e => handleUpload(e.target.files)}
       />
+
+      {/* Image lightbox */}
+      {lightboxUrl && (
+        <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
+      )}
     </div>
   );
 }

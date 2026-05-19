@@ -60,17 +60,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Static file serving for uploads ─────────────────────────
+# Must come before API routers so the /uploads path is registered first.
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+
 # ── Routes ──────────────────────────────────────────────────
 from app.api.v1.router import api_router
 from app.api.ws.handler import websocket_endpoint
 
 app.include_router(api_router, prefix="/api/v1")
-
-# ── Static file serving for uploads ─────────────────────────
-try:
-    app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
-except RuntimeError:
-    pass  # directory may be empty on first boot — file upload creates subdirs
 
 # ── WebSocket ───────────────────────────────────────────────
 app.add_api_websocket_route("/ws", websocket_endpoint)

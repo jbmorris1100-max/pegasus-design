@@ -12,9 +12,30 @@ from app.models.files import FileRecord
 
 router = APIRouter()
 
-UPLOADS_DIR = os.getenv("UPLOADS_DIR", "/app/uploads")
-ALLOWED_EXT = {"pdf", "png", "jpg", "jpeg", "dwg", "dxf", "docx", "xlsx"}
-MAX_BYTES    = 50 * 1024 * 1024  # 50 MB
+UPLOADS_DIR    = os.getenv("UPLOADS_DIR", "/app/uploads")
+ALLOWED_EXT    = {"pdf", "png", "jpg", "jpeg", "dwg", "dxf", "docx", "xlsx"}
+MAX_BYTES      = 50 * 1024 * 1024  # 50 MB
+
+# Build file URLs as fully-qualified public URLs when the Railway domain is available.
+# Falls back to a relative path (works for local dev via same-origin serving).
+_RAILWAY_DOMAIN = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+
+
+def _build_file_url(customer_id: str, filename: str) -> str:
+    if _RAILWAY_DOMAIN:
+        return f"https://{_RAILWAY_DOMAIN}/uploads/{customer_id}/{filename}"
+    return f"/uploads/{customer_id}/{filename}"
+
+
+def _disk_path_from_url(file_url: str) -> str:
+    """Extract the filesystem path from either a full URL or a relative /uploads/... path."""
+    if file_url.startswith("http"):
+        from urllib.parse import urlparse
+        path = urlparse(file_url).path          # "/uploads/{cid}/{name}"
+    else:
+        path = file_url                          # "/uploads/{cid}/{name}"
+    relative = path.split("/uploads", 1)[-1]    # "/{cid}/{name}"
+    return UPLOADS_DIR + relative
 
 
 def _file_dict(f: FileRecord) -> dict:
@@ -63,7 +84,7 @@ async def upload_file(
     with open(disk_path, "wb") as fh:
         fh.write(content)
 
-    file_url = f"/uploads/{customer_id}/{unique_name}"
+    file_url = _build_file_url(customer_id, unique_name)
 
     record = FileRecord(
         customer_id  = customer_id,
@@ -159,9 +180,8 @@ async def delete_file(file_id: str, db: AsyncSession = Depends(get_db)):
     # Soft-delete in DB
     f.deleted_at = datetime.now(timezone.utc)
 
-    # Remove physical file
-    relative = f.file_url.split("/uploads", 1)[-1]   # "/{customer_id}/{name}"
-    disk_path = UPLOADS_DIR + relative
+    # Remove physical file (handles both full URLs and legacy relative paths)
+    disk_path = _disk_path_from_url(f.file_url)
     if os.path.exists(disk_path):
         try:
             os.remove(disk_path)
