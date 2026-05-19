@@ -2,12 +2,22 @@
 import asyncio
 import io
 import os
+import traceback
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
 import cloudinary
 import cloudinary.uploader
+
+# Configure at module load so the SDK is ready before any request arrives.
+# _configure_cloudinary() is also called per-request to pick up late-set env vars.
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+    secure=True,
+)
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -117,6 +127,8 @@ async def upload_file(
         )
     except Exception as exc:
         print(f"[files] Cloudinary upload error: {exc}")
+        print(f"[files] Cloudinary upload traceback:\n{traceback.format_exc()}")
+        print(f"[files] Cloudinary config at time of error — cloud_name={os.getenv('CLOUDINARY_CLOUD_NAME')!r} api_key={'SET' if os.getenv('CLOUDINARY_API_KEY') else 'MISSING'} api_secret={'SET' if os.getenv('CLOUDINARY_API_SECRET') else 'MISSING'}")
         raise HTTPException(500, f"File upload failed: {exc}")
 
     file_url             = upload_result["secure_url"]
