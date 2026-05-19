@@ -221,6 +221,18 @@ async def update_file(
 
 # ── Delete ────────────────────────────────────────────────────────────────────
 
+@router.delete("/cleanup-old-records")
+async def cleanup_old_records(db: AsyncSession = Depends(get_db)):
+    from sqlalchemy import delete as sa_delete
+    result = await db.execute(
+        sa_delete(FileRecord).where(FileRecord.file_url.contains("/uploads/"))
+    )
+    await db.commit()
+    deleted = result.rowcount
+    print(f"[files] cleanup-old-records: deleted {deleted} stale records")
+    return {"deleted": deleted, "message": f"Removed {deleted} stale local-path file record(s)"}
+
+
 @router.delete("/{file_id}")
 async def delete_file(file_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(FileRecord).where(FileRecord.id == file_id))
