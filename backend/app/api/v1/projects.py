@@ -112,7 +112,7 @@ async def create_project(
         print(f"[projects] create error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     print(f"[projects] created {p.id} — {p.name}")
-    return {"id": str(p.id), "name": p.name, "created": True}
+    return {"id": str(p.id), "name": p.name, "customer_id": str(p.customer_id) if p.customer_id else None, "created": True}
 
 
 @router.get("/{project_id}")

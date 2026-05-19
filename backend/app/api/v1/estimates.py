@@ -86,7 +86,7 @@ async def create_estimate(
         await db.rollback()
         print(f"[estimates] create error: {ex}")
         raise HTTPException(status_code=500, detail=str(ex))
-    return {"id": str(e.id), "title": e.title, "created": True}
+    return {"id": str(e.id), "title": e.title, "customer_id": str(e.customer_id) if e.customer_id else None, "created": True}
 
 
 @router.get("/{estimate_id}")

@@ -1,12 +1,13 @@
 /** Pegasus Design — Projects: Lifecycle Tracking */
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Shell } from "@/components/ui/shell";
 import { KpiCard, Card, StatusBadge, Button } from "@/components/ui/core";
 import { Modal, SlidePanel, FormField, FormInput, FormSelect, FormTextarea } from "@/components/ui/modal";
 import { Toaster, toast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
 import { FileManager } from "@/components/FileManager";
+import { PendingFileUploader, PendingFileUploaderHandle } from "@/components/PendingFileUploader";
 import { Clock } from "lucide-react";
 
 type PanelTab = "details" | "files";
@@ -58,6 +59,8 @@ export default function ProjectsPage() {
   const [createError, setCreateError] = useState("");
   const [form, setForm]             = useState(emptyForm);
 
+  const createUploaderRef = useRef<PendingFileUploaderHandle>(null);
+
   // Detail / edit slide panel
   const [panelOpen, setPanelOpen]           = useState(false);
   const [selected, setSelected]             = useState<any>(null);
@@ -80,16 +83,27 @@ export default function ProjectsPage() {
     if (!form.name.trim()) { setCreateError("Project name is required."); return; }
     setSubmitting(true); setCreateError("");
     try {
-      await api.post("/projects/", {
+      const result: any = await api.post("/projects/", {
         ...form,
         estimated_total: parseFloat(form.estimated_total) || 0,
         estimated_labor_hours: parseFloat(form.estimated_labor_hours) || 0,
       });
+      const projectId: string  = result.id;
+      const customerId: string = result.customer_id ?? "";
+
+      const { failed } = customerId
+        ? await (createUploaderRef.current?.uploadAll(projectId, "project", customerId) ?? Promise.resolve({ success: 0, failed: 0 }))
+        : { failed: 0 };
+
       setCreateOpen(false);
       setForm(emptyForm);
       setLoading(true);
       await fetchData();
-      toast("Project created");
+      if (failed > 0) {
+        toast(`Project created, but ${failed} file(s) failed to upload`, "error");
+      } else {
+        toast("Project created");
+      }
     } catch (e: any) {
       const msg = e?.message || "Failed to create project.";
       setCreateError(msg);
@@ -246,7 +260,8 @@ export default function ProjectsPage() {
         <FormField label="Description">
           <FormTextarea value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
         </FormField>
-        <div className="flex items-center gap-3 pt-2">
+        <PendingFileUploader ref={createUploaderRef} label="Attach Files (optional)" />
+        <div className="flex items-center gap-3 pt-4">
           <Button variant="primary" onClick={handleCreate} disabled={submitting}>{submitting ? "Creating…" : "Create Project"}</Button>
           <Button variant="ghost" size="sm" onClick={() => setCreateOpen(false)}>Cancel</Button>
         </div>

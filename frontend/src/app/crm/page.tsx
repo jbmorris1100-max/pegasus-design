@@ -6,6 +6,7 @@ import { Card, StatusBadge, Button } from "@/components/ui/core";
 import { Modal, SlidePanel, FormField, FormInput, FormSelect, FormTextarea } from "@/components/ui/modal";
 import { Toaster, toast } from "@/components/ui/toast";
 import { FileManager } from "@/components/FileManager";
+import { PendingFileUploader, PendingFileUploaderHandle } from "@/components/PendingFileUploader";
 import { api } from "@/lib/api";
 import { Users, Mail, Phone, MapPin, MessageCircle, Send } from "lucide-react";
 
@@ -38,6 +39,8 @@ export default function CrmPage() {
   const [submitting,      setSubmitting]      = useState(false);
   const [createError,     setCreateError]     = useState("");
   const [form,            setForm]            = useState(emptyForm);
+
+  const createUploaderRef = useRef<PendingFileUploaderHandle>(null);
 
   // Detail / edit slide panel
   const [panelOpen,       setPanelOpen]       = useState(false);
@@ -79,11 +82,19 @@ export default function CrmPage() {
     if (!form.name.trim()) { setCreateError("Name is required."); return; }
     setSubmitting(true); setCreateError("");
     try {
-      await api.post("/customers/", form);
+      const result: any = await api.post("/customers/", form);
+      const newId: string = result.id;
+
+      const { failed } = await (createUploaderRef.current?.uploadAll(newId, "customer") ?? Promise.resolve({ success: 0, failed: 0 }));
+
       setCreateOpen(false);
       setForm(emptyForm);
       await fetchData();
-      toast("Customer created");
+      if (failed > 0) {
+        toast(`Customer created, but ${failed} file(s) failed to upload`, "error");
+      } else {
+        toast("Customer created");
+      }
     } catch {
       setCreateError("Failed to create customer.");
       toast("Failed to create customer", "error");
@@ -279,6 +290,7 @@ export default function CrmPage() {
         <FormField label="Notes">
           <FormTextarea value={form.notes} onChange={(v) => setForm({ ...form, notes: v })} placeholder="Optional notes" />
         </FormField>
+        <PendingFileUploader ref={createUploaderRef} label="Attach Files (optional)" />
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancel</Button>
           <Button variant="primary" onClick={handleCreate} disabled={submitting}>

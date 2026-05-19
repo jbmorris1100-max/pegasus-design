@@ -1,12 +1,13 @@
 /** Pegasus Design — Estimating Intelligence */
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Shell } from "@/components/ui/shell";
 import { KpiCard, Card, StatusBadge, Button } from "@/components/ui/core";
 import { Modal, SlidePanel, FormField, FormInput, FormSelect, FormTextarea } from "@/components/ui/modal";
 import { Toaster, toast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
 import { FileManager } from "@/components/FileManager";
+import { PendingFileUploader, PendingFileUploaderHandle } from "@/components/PendingFileUploader";
 
 type PanelTab = "details" | "files";
 
@@ -28,6 +29,8 @@ export default function EstimatingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]         = useState("");
   const [form, setForm]           = useState(emptyForm);
+
+  const createUploaderRef = useRef<PendingFileUploaderHandle>(null);
 
   // Detail / edit slide panel
   const [panelOpen, setPanelOpen]           = useState(false);
@@ -52,18 +55,29 @@ export default function EstimatingPage() {
     if (!form.title.trim()) { setError("Title is required."); return; }
     setSubmitting(true); setError("");
     try {
-      await api.post("/estimates/", {
+      const result: any = await api.post("/estimates/", {
         ...form,
         total: parseFloat(form.total) || 0,
         estimated_labor_hours: parseFloat(form.estimated_labor_hours) || 0,
         estimated_material_cost: parseFloat(form.estimated_material_cost) || 0,
         target_margin: parseFloat(form.target_margin) || 0.40,
       });
+      const estimateId: string = result.id;
+      const customerId: string = result.customer_id ?? "";
+
+      const { failed } = customerId
+        ? await (createUploaderRef.current?.uploadAll(estimateId, "estimate", customerId) ?? Promise.resolve({ success: 0, failed: 0 }))
+        : { failed: 0 };
+
       setModalOpen(false);
       setForm(emptyForm);
       setLoading(true);
       await fetchData();
-      toast("Estimate created");
+      if (failed > 0) {
+        toast(`Estimate created, but ${failed} file(s) failed to upload`, "error");
+      } else {
+        toast("Estimate created");
+      }
     } catch { setError("Failed to create estimate."); }
     finally { setSubmitting(false); }
   }
@@ -208,7 +222,8 @@ export default function EstimatingPage() {
         <FormField label="Target Margin">
           <FormInput value={form.target_margin} onChange={(v) => setForm({ ...form, target_margin: v })} placeholder="0.40 = 40%" />
         </FormField>
-        <div className="flex items-center gap-3 pt-2">
+        <PendingFileUploader ref={createUploaderRef} label="Attach Files (optional)" />
+        <div className="flex items-center gap-3 pt-4">
           <Button variant="primary" onClick={handleSubmit} disabled={submitting}>{submitting ? "Creating…" : "Create Estimate"}</Button>
           <Button variant="ghost" size="sm" onClick={() => setModalOpen(false)}>Cancel</Button>
         </div>
