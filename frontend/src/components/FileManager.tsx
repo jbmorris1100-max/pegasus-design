@@ -72,10 +72,12 @@ const SOURCE_COLORS: Record<string, string> = {
 
 // ── Open / view logic ─────────────────────────────────────────────────────────
 
-function openFile(f: any, setLightbox: (url: string) => void) {
-  const url = resolveUrl(f.file_url);
+function openFile(f: any, setLightbox: (payload: { url: string; name: string }) => void) {
+  const url  = resolveUrl(f.file_url);
+  const name = f.display_name || f.filename || "file";
+  console.log("[FileManager] opening file:", { file_url: f.file_url, resolved: url, type: f.file_type });
   if (IMAGE_TYPES.has(f.file_type)) {
-    setLightbox(url);
+    setLightbox({ url, name });
   } else if (f.file_type === "pdf") {
     window.open(url, "_blank", "noopener,noreferrer");
   } else {
@@ -100,7 +102,7 @@ function triggerDownload(f: any) {
 
 // ── Lightbox ──────────────────────────────────────────────────────────────────
 
-function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
+function Lightbox({ url, name, onClose }: { url: string; name: string; onClose: () => void }) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", handler);
@@ -109,23 +111,35 @@ function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm"
+      className="fixed inset-0 z-[200] flex flex-col items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.9)" }}
       onClick={onClose}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={url}
-        alt="Preview"
-        className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
-        onClick={e => e.stopPropagation()}
-      />
+      {/* Close button */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
-        title="Close"
+        className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors z-10"
+        title="Close (Esc)"
       >
         <X className="w-5 h-5" />
       </button>
+
+      {/* Image */}
+      <div onClick={e => e.stopPropagation()}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt={name}
+          style={{ maxWidth: "90vw", maxHeight: "82vh", objectFit: "contain" }}
+          className="rounded-lg shadow-2xl block"
+          onError={(e) => {
+            console.error("[FileManager] lightbox image failed to load:", (e.target as HTMLImageElement).src);
+          }}
+        />
+
+        {/* Filename caption */}
+        <p className="mt-3 text-center text-sm text-white/70 truncate max-w-[90vw]">{name}</p>
+      </div>
     </div>
   );
 }
@@ -146,7 +160,7 @@ export function FileManager({ customerId, projectId, estimateId, title = "Files"
   const [uploading,      setUploading]      = useState(false);
   const [dragOver,       setDragOver]       = useState(false);
   const [uploadCategory, setUploadCategory] = useState("other");
-  const [lightboxUrl,    setLightboxUrl]    = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ url: string; name: string } | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   async function fetchFiles() {
@@ -261,7 +275,7 @@ export function FileManager({ customerId, projectId, estimateId, title = "Files"
                 {isImage ? (
                   <button
                     className="flex-shrink-0 w-10 h-10 rounded overflow-hidden bg-surface-high border border-border hover:border-accent/30 transition-colors"
-                    onClick={() => setLightboxUrl(resolvedUrl)}
+                    onClick={() => setLightbox({ url: resolvedUrl, name: displayName })}
                     title="View image"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -269,6 +283,7 @@ export function FileManager({ customerId, projectId, estimateId, title = "Files"
                       src={resolvedUrl}
                       alt={displayName}
                       className="w-full h-full object-cover"
+                      onError={(e) => console.error("[FileManager] thumbnail failed:", (e.target as HTMLImageElement).src)}
                     />
                   </button>
                 ) : (
@@ -278,7 +293,7 @@ export function FileManager({ customerId, projectId, estimateId, title = "Files"
                 {/* Name + metadata — clicking opens/views the file */}
                 <button
                   className="flex-1 min-w-0 text-left"
-                  onClick={() => openFile(f, setLightboxUrl)}
+                  onClick={() => openFile(f, setLightbox)}
                   title={isViewable ? (isImage ? "View image" : "Open PDF") : "Download"}
                 >
                   <div className="text-xs font-medium truncate hover:text-accent transition-colors cursor-pointer">
@@ -306,7 +321,7 @@ export function FileManager({ customerId, projectId, estimateId, title = "Files"
                   {/* View / open button */}
                   <button
                     className="w-7 h-7 flex items-center justify-center rounded-lg text-muted hover:text-accent hover:bg-accent/10 transition-colors"
-                    onClick={() => openFile(f, setLightboxUrl)}
+                    onClick={() => openFile(f, setLightbox)}
                     title={isImage ? "View image" : f.file_type === "pdf" ? "Open PDF" : "Download"}
                   >
                     {isViewable ? <Eye className="w-3.5 h-3.5" /> : <Download className="w-3.5 h-3.5" />}
@@ -389,8 +404,8 @@ export function FileManager({ customerId, projectId, estimateId, title = "Files"
       />
 
       {/* Image lightbox */}
-      {lightboxUrl && (
-        <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
+      {lightbox && (
+        <Lightbox url={lightbox.url} name={lightbox.name} onClose={() => setLightbox(null)} />
       )}
     </div>
   );

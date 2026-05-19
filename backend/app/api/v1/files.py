@@ -12,29 +12,50 @@ from app.models.files import FileRecord
 
 router = APIRouter()
 
-UPLOADS_DIR    = os.getenv("UPLOADS_DIR", "/app/uploads")
-ALLOWED_EXT    = {"pdf", "png", "jpg", "jpeg", "dwg", "dxf", "docx", "xlsx"}
-MAX_BYTES      = 50 * 1024 * 1024  # 50 MB
+UPLOADS_DIR = os.getenv("UPLOADS_DIR", "/app/uploads")
+ALLOWED_EXT = {"pdf", "png", "jpg", "jpeg", "dwg", "dxf", "docx", "xlsx"}
+MAX_BYTES   = 50 * 1024 * 1024  # 50 MB
 
-# Build file URLs as fully-qualified public URLs when the Railway domain is available.
-# Falls back to a relative path (works for local dev via same-origin serving).
-_RAILWAY_DOMAIN = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+
+def _get_public_base() -> str:
+    """Return the public HTTPS base URL for the backend.
+
+    Read fresh on every call so a newly-set RAILWAY_PUBLIC_DOMAIN env var
+    takes effect without a restart.  The hardcoded fallback ensures files are
+    always accessible even before the env var is configured in Railway.
+    """
+    domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "pegasus-design-production.up.railway.app")
+    return f"https://{domain}"
 
 
 def _build_file_url(customer_id: str, filename: str) -> str:
-    if _RAILWAY_DOMAIN:
-        return f"https://{_RAILWAY_DOMAIN}/uploads/{customer_id}/{filename}"
-    return f"/uploads/{customer_id}/{filename}"
+    """Build the full public URL used to serve an uploaded file."""
+    return f"{_get_public_base()}/uploads/{customer_id}/{filename}"
+
+
+def _resolve_file_url(raw_url: str) -> str:
+    """Normalise file_url so the API always returns a full https:// URL.
+
+    Legacy records stored relative paths like /uploads/{cid}/{name}.
+    New records store full URLs.  This handles both so the frontend
+    never has to guess the backend origin.
+    """
+    if not raw_url:
+        return raw_url
+    if raw_url.startswith("http"):
+        return raw_url
+    # Legacy relative path — prepend the current public base
+    return f"{_get_public_base()}{raw_url}"
 
 
 def _disk_path_from_url(file_url: str) -> str:
-    """Extract the filesystem path from either a full URL or a relative /uploads/... path."""
+    """Extract the local filesystem path from either a full URL or a relative path."""
     if file_url.startswith("http"):
         from urllib.parse import urlparse
-        path = urlparse(file_url).path          # "/uploads/{cid}/{name}"
+        path = urlparse(file_url).path       # "/uploads/{cid}/{name}"
     else:
-        path = file_url                          # "/uploads/{cid}/{name}"
-    relative = path.split("/uploads", 1)[-1]    # "/{cid}/{name}"
+        path = file_url                      # "/uploads/{cid}/{name}"
+    relative = path.split("/uploads", 1)[-1]  # "/{cid}/{name}"
     return UPLOADS_DIR + relative
 
 
@@ -47,7 +68,7 @@ def _file_dict(f: FileRecord) -> dict:
         "estimate_id":  str(f.estimate_id) if f.estimate_id else None,
         "filename":     f.filename,
         "display_name": f.display_name or f.filename,
-        "file_url":     f.file_url,
+        "file_url":     _resolve_file_url(f.file_url),
         "file_type":    f.file_type,
         "file_size":    f.file_size,
         "category":     f.category or "other",
@@ -85,6 +106,8 @@ async def upload_file(
         fh.write(content)
 
     file_url = _build_file_url(customer_id, unique_name)
+    print(f"[files] saved  → {disk_path}")
+    print(f"[files] url    → {file_url}")
 
     record = FileRecord(
         customer_id  = customer_id,
